@@ -16,8 +16,8 @@ BASE DE DATOS DE SALUD — Salud-Conecta AI (Granada, Nicaragua)
 ═══════════════════════════════════════════════════════════════
 */
 
-const VERSION_BASE_DATOS = '7.3.3';
-const ULTIMA_ACTUALIZACION = '2026-03-25';
+const VERSION_BASE_DATOS = '7.4';
+const ULTIMA_ACTUALIZACION = '2026-04-16';
 
 // ═══════════════════════════════════════════════════════════════
 //  🏥 HOSPITALES
@@ -25,7 +25,7 @@ const ULTIMA_ACTUALIZACION = '2026-03-25';
 const HOSPITALES = [
   {
     id: 1,
-    categoria: 'Hospital',
+    categoria: 'hospital',
     nombre: 'Hospital Amistad Japón Nicaragua',
     direccion: 'Km 44.5 Carretera Granada-Masaya, Barrio El Capullo',
     telefono: '2552-7050',
@@ -46,8 +46,7 @@ const HOSPITALES = [
 // ═══════════════════════════════════════════════════════════════
 const CLINICAS = [
 {
-    id: 3,
-    categoria: 'Clinica',
+    id: 4, categoria: 'Clinica',
     nombre: 'Centro de Salud Jorge Sinforoso Bravo',
     direccion: 'Costado norte del Parque Sandino, Barrio Estación',
     telefono: '2552-0600',
