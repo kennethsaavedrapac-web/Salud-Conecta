@@ -2,7 +2,7 @@
 ═══════════════════════════════════════════════════════════════
 SALUD-CONECTA AI — App Principal
 ═══════════════════════════════════════════════════════════════
-📌 VERSIÓN: 7.3.3
+📌 VERSIÓN: 7.4.0
 📌 CAMBIOS: Maintenance Update · Database Clean up
 ═══════════════════════════════════════════════════════════════
 */
@@ -207,9 +207,18 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const userId  = 'user_' + Date.now();
     const users   = getUsers();
-    users[userId] = { pinHash: hashPin(pin), createdAt: new Date().toISOString() };
+    const pinHashed = hashPin(pin);
+    const existingUser = Object.keys(users).find(id => users[id].pinHash === pinHashed);
+
+    if (existingUser) {
+      showAuthError('register-error', 'Ese PIN ya está en uso en este dispositivo. Por favor, elige otro.');
+      shakePins('reg-p');
+      return;
+    }
+
+    const userId  = 'user_' + Date.now();
+    users[userId] = { pinHash: pinHashed, createdAt: new Date().toISOString() };
     saveUsers(users);
     saveUserProfile(userId, { name });
 
@@ -539,10 +548,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ═══════════════════════════════════════════════════════════════
-  //  CLAUDE API — VÍA PROXY BACKEND (worker.js)
+  //  GROQ API — VÍA PROXY BACKEND (worker.js)
   //  La API key vive en el servidor. El usuario nunca la ve ni toca.
   // ═══════════════════════════════════════════════════════════════
-  async function callClaudeAPI(userMessage) {
+  async function callGroqAPI(userMessage) {
     // Añadir mensaje al historial
     appState.conversationHistory.push({ role: 'user', content: userMessage });
 
@@ -1137,8 +1146,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="drug-warning-banner">
           <strong>⚠️ Información de EE.UU. (FDA)</strong>
           <ul>
-            <li>Las dosis y nombres comerciales pueden diferir en Nicaragua</li>
-            <li>Consulta siempre con un <strong>farmacéutico local</strong></li>
+            <li>El siguiente texto puede contener información en inglés.</li>
+            <li>Las dosis y nombres comerciales pueden diferir en Nicaragua.</li>
+            <li>Consulta siempre con un <strong>farmacéutico local</strong>.</li>
           </ul>
         </div>
         <div class="drug-card">
@@ -1247,7 +1257,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       showTyping(true);
-      // ── GESTIÓN DE CONTEXTO (Mejorado v7.3.3: Conversacional-First) ──
+      // ── GESTIÓN DE CONTEXTO (Mejorado v7.4.0: Conversacional-First) ──
       let contextData = { meds: [], symptoms: [], centers: [] };
       
       // 1. Recolectar Medicamentos
@@ -1310,7 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         : text;
 
       // Si el worker falla (sin internet, no desplegado), usa respuestas básicas automáticamente
-      const response = await callClaudeAPI(textWithContext);
+      const response = await callGroqAPI(textWithContext);
       if (response) {
         const urgency = detectUrgencyFromResponse(response);
         addMessage(response, 'ai', urgency, getShortTime());
@@ -1393,7 +1403,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lines.push('=======================================');
     lines.push(`Fecha: ${now}`);
     lines.push(`Ubicación: ${includeLocationCheckbox?.checked ? 'Granada, Nicaragua' : '[Ocultada]'}`);
-    lines.push(`Versión: 7.3.3`);
+    lines.push(`Versión: 7.4.0`);
     lines.push('');
 
     if (includeSummaryCheckbox?.checked) {
@@ -1427,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     lines.push('-------------------------------------------');
     lines.push('⚠️ No es diagnóstico médico. Emergencias: 128');
-    lines.push('Salud-Conecta AI v7.3.3');
+    lines.push('Salud-Conecta AI v7.4.0');
     return lines.join('\n');
   }
 
@@ -1944,5 +1954,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  console.log('🏥 Salud-Conecta AI v7.3.3 iniciada · Worker:', WORKER_URL);
+  console.log('🏥 Salud-Conecta AI v7.4.0 iniciada · Worker:', WORKER_URL);
 });
