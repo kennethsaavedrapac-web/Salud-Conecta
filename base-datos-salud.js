@@ -115,15 +115,15 @@ const LABORATORIOS = [
 const FARMACIAS = [
   {
     id: 12, categoria: 'farmacia',
-    nombre: 'Farmacia Del Pueblo',
-    direccion: 'Parque Central, Granada',
-    telefono: '2552-5000', emergencia: true,
-    lat: 11.9340, lng: -85.9565,
-    horario: '24 horas',
-    servicios: ['medicamentos','consultorio_farmaceutico','toma_presion','medicion_glucosa'],
+    nombre: 'Farmacia Praga',
+    direccion: 'C. Real Xalteva, Granada, Nicaragua',
+    telefono: '2552-5726', emergencia: true,
+    lat: 11.929152073123676, lng:-85.9555020036096,
+    horario: '8 am - 10 pm',
+    servicios: ['medicamentos'],
     disponible: true, verificado: true,
     barrio: 'Centro',
-    notas: 'Farmacia 24 horas. Precios económicos.'
+    notas: 'Precios económicos.'
   }
 ];
 
