@@ -38,21 +38,7 @@ const HOSPITALES = [
     notas: 'Hospital Departamental público principal de Granada (MINSA/SILAIS). Urgencias 24h gratuitas. Referencia departamental.',
     seguros: ['INSS','MINSA','Atención gratuita']
   },
-  {
-    id: 2,
-    categoria: 'hospital',
-    nombre: 'Hospital SERMESA Granada',
-    direccion: 'Granada, Nicaragua',
-    telefono: '2552-4444',
-    emergencia: true,
-    lat: 11.9301, lng: -85.9563,
-    horario: '24 horas',
-    servicios: ['urgencias','consulta','cirugia','laboratorio','farmacia','rayos_x','ultrasonido'],
-    disponible: true, verificado: true,
-    barrio: 'Centro',
-    notas: 'Hospital privado — SERMESA. INSS y pago particular.',
-    seguros: ['INSS','Particular']
-  },
+  
   {
     id: 3,
     categoria: 'hospital',
@@ -75,19 +61,6 @@ const HOSPITALES = [
 // ═══════════════════════════════════════════════════════════════
 const CLINICAS = [
   {
-    id: 4, categoria: 'clinica',
-    nombre: 'Centro de Salud Naciones Unidas',
-    direccion: 'Barrio Naciones Unidas, Granada',
-    telefono: '2552-0700', emergencia: false,
-    lat: 11.9252, lng: -85.9501,
-    horario: 'Lun-Vie 7am-5pm',
-    servicios: ['consulta','vacunacion','curaciones','control_nino_sano','planificacion_familiar'],
-    disponible: true, verificado: true,
-    barrio: 'Naciones Unidas',
-    notas: 'Centro de Salud MINSA. Atención gratuita.',
-    seguros: ['MINSA','Atención gratuita']
-  },
-  {
     id: 5, categoria: 'clinica',
     nombre: 'Centro de Salud Villa Sandino',
     direccion: 'Barrio Villa Sandino, Granada',
@@ -98,32 +71,6 @@ const CLINICAS = [
     disponible: true, verificado: true,
     barrio: 'Villa Sandino',
     notas: 'Centro de Salud MINSA. Atención gratuita.',
-    seguros: ['MINSA','Atención gratuita']
-  },
-  {
-    id: 6, categoria: 'clinica',
-    nombre: 'Centro de Salud Los Tanques',
-    direccion: 'Barrio Los Tanques, Granada',
-    telefono: '2552-0900', emergencia: false,
-    lat: 11.9198, lng: -85.9488,
-    horario: 'Lun-Vie 7am-5pm',
-    servicios: ['consulta','vacunacion','curaciones','planificacion_familiar'],
-    disponible: true, verificado: true,
-    barrio: 'Los Tanques',
-    notas: 'Centro de Salud MINSA. Atención gratuita.',
-    seguros: ['MINSA','Atención gratuita']
-  },
-  {
-    id: 7, categoria: 'clinica',
-    nombre: 'Centro de Salud Palmira (Antiguo)',
-    direccion: 'Barrio Palmira, Granada',
-    telefono: '2552-1000', emergencia: false,
-    lat: 11.9385, lng: -85.9492, // Corregido según ubicación Pedro José Chamorro / Shell Palmira
-    horario: 'Lun-Vie 7am-5pm',
-    servicios: ['consulta','vacunacion','curaciones','medicina_natural'],
-    disponible: true, verificado: true,
-    barrio: 'Palmira',
-    notas: 'Centro de Salud MINSA. Referido comúnmente como C.S. Palmira por su ubicación cerca de la antigua Shell.',
     seguros: ['MINSA','Atención gratuita']
   },
   {
@@ -151,63 +98,15 @@ const CLINICAS = [
     barrio: 'Barrio Calle Palmira',
     notas: 'Centro de Salud MINSA. Atención gratuita.',
     seguros: ['MINSA','Atención gratuita']
-  },
-  {
-    id: 10, categoria: 'clinica',
-    nombre: 'Puesto de Salud Mercado Municipal',
-    direccion: 'Costado sur del Mercado Municipal, Granada',
-    telefono: '2552-0500', emergencia: false,
-    lat: 11.9322, lng: -85.9525,
-    horario: 'Lun-Vie 7am-4pm',
-    servicios: ['consulta_general','curaciones','vacunacion'],
-    disponible: true, verificado: true,
-    barrio: 'Mercado',
-    notas: 'Puesto de salud periférico MINSA.',
-    seguros: ['MINSA','Atención gratuita']
-  },
-  {
-    id: 11, categoria: 'clinica',
-    nombre: 'Clínica Xalteva',
-    direccion: 'Calle Real Xalteva, Granada',
-    telefono: '2552-3276', emergencia: false,
-    lat: 11.9321, lng: -85.9582,
-    horario: 'Lun-Vie 8:30am-5pm',
-    servicios: ['consulta_general','pediatria','ginecologia'],
-    disponible: true, verificado: true,
-    barrio: 'Xalteva',
-    notas: 'Clínica privada con diversas especialidades.',
-    seguros: ['Particular']
   }
+
 ];
 
 // ═══════════════════════════════════════════════════════════════
 //  🔬 LABORATORIOS
 // ═══════════════════════════════════════════════════════════════
 const LABORATORIOS = [
-  {
-    id: 21, categoria: 'laboratory',
-    nombre: 'Laboratorio Xalteva',
-    direccion: 'Calle Real Xalteva, Granada',
-    telefono: '8464-5653', emergencia: false,
-    lat: 11.9323, lng: -85.9585,
-    horario: 'Lun-Vie 6am-5pm, Sab 6am-12pm',
-    servicios: ['analisis_sangre','examen_orina','examen_heces','perfil_lipidico','glucosa'],
-    disponible: true, verificado: true,
-    barrio: 'Xalteva',
-    notas: 'Laboratorio clínico privado con amplia trayectoria.'
-  },
-  {
-    id: 22, categoria: 'laboratory',
-    nombre: 'Laboratorio Sharem',
-    direccion: 'Del Río Shopping, Granada',
-    telefono: '2552-0000', emergencia: false,
-    lat: 11.9350, lng: -85.9570,
-    horario: 'Lun-Vie 7am-4pm',
-    servicios: ['analisis_clinicos','pruebas_especiales'],
-    disponible: true, verificado: true,
-    barrio: 'Centro',
-    notas: 'Servicio de laboratorio clínico.'
-  }
+  
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -225,90 +124,6 @@ const FARMACIAS = [
     disponible: true, verificado: true,
     barrio: 'Centro',
     notas: 'Farmacia 24 horas. Precios económicos.'
-  },
-  {
-    id: 13, categoria: 'farmacia',
-    nombre: 'Farmacia San Nicolás',
-    direccion: 'Calle La Calzada, Granada',
-    telefono: '2552-6000', emergencia: false,
-    lat: 11.9355, lng: -85.9545,
-    horario: '7am-10pm',
-    servicios: ['medicamentos','productos_naturales','cosmeticos','vitaminas'],
-    disponible: true, verificado: true,
-    barrio: 'La Calzada',
-    notas: 'Amplia variedad de productos naturales.'
-  },
-  {
-    id: 14, categoria: 'farmacia',
-    nombre: 'Farmacia Cruz Verde',
-    direccion: 'Centro Comercial, Granada',
-    telefono: '2552-7000', emergencia: false,
-    lat: 11.9330, lng: -85.9555,
-    horario: '8am-9pm',
-    servicios: ['medicamentos','cosmeticos','vitaminas','cuidado_bebe','leche_formula'],
-    disponible: true, verificado: true,
-    barrio: 'Centro',
-    notas: 'Especializada en productos para bebés.'
-  },
-  {
-    id: 15, categoria: 'farmacia',
-    nombre: 'Farmacia Guadalajara',
-    direccion: 'Barrio San Antonio, Granada',
-    telefono: '2552-8000', emergencia: false,
-    lat: 11.9325, lng: -85.9535,
-    horario: '7am-9pm',
-    servicios: ['medicamentos','consultorio_farmaceutico','toma_presion'],
-    disponible: true, verificado: true,
-    barrio: 'San Antonio',
-    notas: 'Servicio de consulta farmacéutica gratis.'
-  },
-  {
-    id: 16, categoria: 'farmacia',
-    nombre: 'Farmacia Bíblica',
-    direccion: 'Calle El Caimito, del Parque Central 3.5c al lago, Granada',
-    telefono: '2552-1234', emergencia: false,
-    lat: 11.9305, lng: -85.9498,
-    horario: '8am-8pm',
-    servicios: ['medicamentos','vitaminas','cuidado_personal'],
-    disponible: true, verificado: true,
-    barrio: 'Centro',
-    notas: 'Ubicada cerca de la zona turística de La Calzada.'
-  },
-  {
-    id: 17, categoria: 'farmacia',
-    nombre: 'Farmacia El Socorro',
-    direccion: 'Calle El Arsenal, costado sur Iglesia San Francisco, Granada',
-    telefono: '2552-4567', emergencia: false,
-    lat: 11.9322, lng: -85.9515,
-    horario: '7:30am-9pm',
-    servicios: ['medicamentos','toma_presion','inyectologia'],
-    disponible: true, verificado: true,
-    barrio: 'Centro',
-    notas: 'Frente al Convento San Francisco.'
-  },
-  {
-    id: 18, categoria: 'farmacia',
-    nombre: 'Farmacia Adriana',
-    direccion: 'Costado norte del Cementerio, Granada',
-    telefono: '2552-7890', emergencia: false,
-    lat: 11.9321, lng: -85.9652,
-    horario: '8am-8pm',
-    servicios: ['medicamentos','productos_lacteos','aseo_personal'],
-    disponible: true, verificado: true,
-    barrio: 'Cementerio',
-    notas: 'Atención cercana al cementerio general.'
-  },
-  {
-    id: 19, categoria: 'farmacia',
-    nombre: 'Farmacia El Galeno',
-    direccion: 'Barrio Campo de Aterrizaje, Granada',
-    telefono: '2552-9988', emergencia: false,
-    lat: 11.9300, lng: -85.9720,
-    horario: '7am-10pm',
-    servicios: ['medicamentos','consulta_farmaceutica'],
-    disponible: true, verificado: true,
-    barrio: 'Campo de Aterrizaje',
-    notas: 'Servicio 15.5 horas al día.'
   }
 ];
 
