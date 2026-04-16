@@ -25,7 +25,7 @@ const ULTIMA_ACTUALIZACION = '2026-03-25';
 const HOSPITALES = [
   {
     id: 1,
-    categoria: 'hospital',
+    categoria: 'Hospital',
     nombre: 'Hospital Amistad Japón Nicaragua',
     direccion: 'Km 44.5 Carretera Granada-Masaya, Barrio El Capullo',
     telefono: '2552-7050',
@@ -38,36 +38,37 @@ const HOSPITALES = [
     notas: 'Hospital Departamental público principal de Granada (MINSA/SILAIS). Urgencias 24h gratuitas. Referencia departamental.',
     seguros: ['INSS','MINSA','Atención gratuita']
   },
-  
-  {
-    id: 3,
-    categoria: 'hospital',
-    nombre: 'Centro de Salud Jorge Sinforoso Bravo',
-    direccion: 'Costado norte del Parque Sandino, Barrio Estación',
-    telefono: '2552-0600',
-    emergencia: false,
-    lat: 11.9302, lng: -85.9581,
-    horario: 'Lun-Vie 7am-8pm, Sab-Dom 7am-12pm',
-    servicios: ['urgencias','consulta','vacunacion','maternidad','pediatria','laboratorio','medicina_natural','curaciones'],
-    disponible: true, verificado: true,
-    barrio: 'Barrio Estación',
-    notas: 'Centro de Salud principal MINSA Granada. Frente al Parque Sandino. Atención gratuita.',
-    seguros: ['MINSA','Atención gratuita']
-  }
+
 ];
 
 // ═══════════════════════════════════════════════════════════════
 //  🏥 CLÍNICAS / CENTROS DE SALUD
 // ═══════════════════════════════════════════════════════════════
 const CLINICAS = [
+{
+    id: 3,
+    categoria: 'Clinica',
+    nombre: 'Centro de Salud Jorge Sinforoso Bravo',
+    direccion: 'Costado norte del Parque Sandino, Barrio Estación',
+    telefono: '2552-0600',
+    emergencia: false,
+    lat: 11.937900230563459, lng: -85.95606424981727,
+    horario: 'Lun-Vie 7am-8pm, Sab-Dom 7am-12pm',
+    servicios: ['urgencias','consulta','vacunacion','maternidad','pediatria','laboratorio','medicina_natural'],
+    disponible: true, verificado: true,
+    barrio: 'Barrio Estación',
+    notas: 'Centro de Salud principal MINSA Granada. Frente al Parque Sandino. Atención gratuita.',
+    seguros: ['MINSA','Atención gratuita']
+  }
+  
   {
     id: 5, categoria: 'clinica',
     nombre: 'Centro de Salud Villa Sandino',
     direccion: 'Barrio Villa Sandino, Granada',
     telefono: '2552-0800', emergencia: false,
-    lat: 11.9421, lng: -85.9612,
+    lat: 11.94032272242962, lng: -85.95051937913613,
     horario: 'Lun-Vie 7am-5pm',
-    servicios: ['consulta','vacunacion','curaciones','control_nino_sano'],
+    servicios: ['consulta','vacunacion','curaciones','control_niño_sano'],
     disponible: true, verificado: true,
     barrio: 'Villa Sandino',
     notas: 'Centro de Salud MINSA. Atención gratuita.',
