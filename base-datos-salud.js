@@ -3303,26 +3303,6 @@ function calcularDistancia(lat1, lng1, lat2, lng2) {
 // ═══════════════════════════════════════════════════════════════
 //  FUNCIONES DE BÚSQUEDA
 // ═══════════════════════════════════════════════════════════════
-function obtenerTodosLosCentros() {
-  return [...HOSPITALES, ...CLINICAS, ...FARMACIAS, ...LABORATORIOS].filter(c => c.disponible);
-}
-
-function buscarCentrosPorCategoria(categoria) {
-  return obtenerTodosLosCentros().filter(c => c.categoria === categoria);
-}
-
-function buscarCentrosPorBarrio(barrio) {
-  return obtenerTodosLosCentros().filter(c =>
-    c.barrio?.toLowerCase().includes(barrio.toLowerCase())
-  );
-}
-
-function buscarCentrosCercanos(lat, lng, radioMetros = 2000) {
-  return obtenerTodosLosCentros()
-    .map(c => ({ ...c, distance: calcularDistancia(lat, lng, c.lat, c.lng) }))
-    .filter(c => c.distance <= radioMetros)
-    .sort((a, b) => a.distance - b.distance);
-}
 
 /**
  * Busca un medicamento por nombre, sinónimos o nombres comerciales.
