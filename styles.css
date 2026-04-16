@@ -1111,4 +1111,62 @@ body {
 @media (max-width: 600px) {
   .update-banner-text p { display: none; }
   .btn-update { padding: 8px 14px; font-size: 0.82rem; }
+
+  /* Fix main header layout and modals on mobile */
+  #user-short-name, .header-subtitle { display: none; }
+  .header-app-name { white-space: nowrap; font-size: 1.1rem; }
+  .header-actions { gap: 6px; }
+  .btn-header { width: 34px; height: 34px; }
+
+  .profile-header {
+    padding: 1rem;
+  }
+  .avatar-circle {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+  .profile-header h2 {
+    font-size: 1.2rem;
+  }
+  .map-header {
+    padding: 0.8rem 1rem;
+  }
+  .btn-close-map, .btn-close-modal {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
+  }
+
+  /* Refined Chat Input for Mobile */
+  .chat-input-area {
+    padding: 0.6rem;
+  }
+  .input-wrapper {
+    gap: 6px;
+    display: flex;
+    align-items: center;
+  }
+  #user-input {
+    flex: 1;
+    min-width: 0; /* Prevents input from forcing flex container to grow */
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    height: 42px; /* Ensure uniform height */
+    box-sizing: border-box;
+  }
+  .btn-voice, .btn-send {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0; /* Prevents buttons from squishing */
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .quick-btn {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+  }
+
 }
