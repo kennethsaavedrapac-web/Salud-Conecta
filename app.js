@@ -1066,12 +1066,6 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       appState.drugCache[drugName] = drugData;
       addDrugCardLocal(drugData, getShortTime());
-      setTimeout(() => {
-        const farmacias = buscarCentrosPorCategoria('farmacia');
-        if (farmacias?.length > 0) {
-          addMessage(`💊 Puedes conseguirlo en estas farmacias de Granada:\n\n${farmacias.map(f => `• ${f.nombre} (${f.horario})`).join('\n')}`, 'ai', null, getShortTime());
-        }
-      }, 500);
       return;
     }
 
@@ -1306,6 +1300,14 @@ document.addEventListener('DOMContentLoaded', () => {
           return fetchDrugInfo(m.nombre_es);
         });
         await Promise.all(drugPromises);
+
+        // Mensaje de farmacias agrupado
+        setTimeout(() => {
+          const farmacias = buscarCentrosPorCategoria('farmacia');
+          if (farmacias?.length > 0) {
+            addMessage(`💊 Puedes conseguir estos medicamentos en estas farmacias de Granada:\n\n${farmacias.map(f => `• ${f.nombre} (${f.horario})`).join('\n')}`, 'ai', null, getShortTime());
+          }
+        }, 500);
       }
 
       // Mostrar tarjetas de síntomas detectados
