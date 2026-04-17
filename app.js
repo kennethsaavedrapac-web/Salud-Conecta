@@ -1204,7 +1204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <p>Información sobre <strong>${sintoma.nombre}</strong>:</p>
         <div style="background:#e9f5ff;border-left:4px solid ${urgenciaColor};padding:12px;margin:12px 0;border-radius:8px;font-size:0.85rem;color:#0369a1;">
           <strong>Nivel de atención: ${sintoma.urgencia_default === 'ALTA' ? '🔴 Urgente' : sintoma.urgencia_default === 'MEDIA' ? '🟡 Moderado' : '🟢 Leve'}</strong>
-          <p id="${descId}" class="drug-section-content" style="margin:6px 0 0;font-size:0.8rem;">${sintoma.descripcion}</p>
+          <p id="${descId}" class="drug-section-content" style="margin:6px 0 0;font-size:0.8rem;color:inherit;">${sintoma.descripcion}</p>
         </div>
         <div class="drug-card">
           ${sintoma.categoria ? `
