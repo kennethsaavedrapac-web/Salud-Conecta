@@ -111,6 +111,11 @@
        ══════════════════════════════════════ -->
   <main id="app-content" style="display:none;">
 
+    <!-- Offline Banner -->
+    <div id="offline-banner" style="display: none; background-color: var(--warning); color: #7a5a00; padding: 6px; text-align: center; font-size: 0.78rem; font-weight: 600;">
+      ⚠️ Sin conexión a internet. Usando modo de orientación básica y base de datos local.
+    </div>
+
     <!-- Header -->
     <header class="app-header">
       <div class="header-logo">
@@ -350,6 +355,13 @@
         <div class="profile-section">
           <div class="profile-section-title">App y Actualizaciones</div>
           <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:10px 12px; border-radius:var(--radius-xs); border:2px solid var(--border);">
+              <div style="font-size:0.86rem; color:var(--text-sec);">Modo oscuro</div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="pf-dark-mode">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:10px 12px; border-radius:var(--radius-xs); border:2px solid var(--border);">
               <div style="font-size:0.86rem; color:var(--text-sec);">Versión actual</div>
               <div style="font-size:0.86rem; font-weight:600; color:var(--primary);">v7.4.0</div>
