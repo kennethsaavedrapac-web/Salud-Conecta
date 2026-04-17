@@ -2,16 +2,16 @@
 ═══════════════════════════════════════════════════════════════
 BASE DE DATOS DE SALUD — Salud-Conecta AI (Granada, Nicaragua)
 ═══════════════════════════════════════════════════════════════
-📌 VERSIÓN: 7.4
+📌 VERSIÓN: 7.4.0
 📌 ÚLTIMA ACTUALIZACIÓN: 2026-04-15
-📌 CAMBIOS v7.4:
+📌 CAMBIOS v7.4.0:
 - Nuevos centros: 3 clínicas, 2 laboratorios, 4 farmacias
 - Nueva categoría: LABORATORIOS integrada en el mapa
 - Mejoras en la visualización de información completa (v7.2+)
 ═══════════════════════════════════════════════════════════════
 */
 
-const VERSION_BASE_DATOS = '7.4';
+const VERSION_BASE_DATOS = '7.4.0';
 const ULTIMA_ACTUALIZACION = '2026-04-16';
 
 // ═══════════════════════════════════════════════════════════════
