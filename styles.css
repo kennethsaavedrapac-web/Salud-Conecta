@@ -420,9 +420,6 @@ body {
   background: var(--warning-light);
   color: #7a5a00;
   border-bottom: 1px solid rgba(243,156,18,0.22);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
 }
 
 /* ───────────────────────────────
