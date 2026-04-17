@@ -10,6 +10,13 @@ SALUD-CONECTA AI — App Principal
 document.addEventListener('DOMContentLoaded', () => {
 
   // ═══════════════════════════════════════════════════════════════
+  //  DARK MODE INIT
+  // ═══════════════════════════════════════════════════════════════
+  if (localStorage.getItem('sc_dark_mode') === 'true') {
+    document.body.classList.add('dark-mode');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   //  VALIDACIÓN BASE DE DATOS
   // ═══════════════════════════════════════════════════════════════
   if (typeof obtenerTodosLosCentros !== 'function') {
@@ -22,6 +29,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.obtenerEmergencias        = () => [];
     window.calcularDistancia         = () => 0;
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  OFFLINE STATUS
+  // ═══════════════════════════════════════════════════════════════
+  const updateOfflineStatus = () => {
+    const offlineBanner = document.getElementById('offline-banner');
+    if (offlineBanner) {
+      offlineBanner.style.display = navigator.onLine ? 'none' : 'block';
+    }
+  };
+  window.addEventListener('online', updateOfflineStatus);
+  window.addEventListener('offline', updateOfflineStatus);
+  updateOfflineStatus();
 
   // ═══════════════════════════════════════════════════════════════
   //  CONFIGURACIÓN DEL PROXY BACKEND
@@ -1720,6 +1740,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setChk('pf-kidney',      p.kidney);
     setChk('pf-liver',       p.liver);
 
+    // Toggle dark mode
+    setChk('pf-dark-mode', localStorage.getItem('sc_dark_mode') === 'true');
+
     // PIN vacío
     ['pf-pin1','pf-pin2','pf-pin3','pf-pin4'].forEach(id => {
       const el = document.getElementById(id);
@@ -1768,6 +1791,15 @@ document.addEventListener('DOMContentLoaded', () => {
       kidney:          getChk('pf-kidney'),
       liver:           getChk('pf-liver')
     };
+
+    // Handle dark mode setting
+    const isDarkMode = getChk('pf-dark-mode');
+    localStorage.setItem('sc_dark_mode', isDarkMode);
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
 
     // Cambiar PIN si llenó los 4 dígitos
     const newPin = ['pf-pin1','pf-pin2','pf-pin3','pf-pin4']

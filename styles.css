@@ -33,6 +33,32 @@
   --shadow-md:      0 6px 24px rgba(47,93,124,0.16);
 }
 
+body.dark-mode {
+  --primary:        #68B4E3;
+  --primary-dark:   #2E7DBB;
+  --primary-light:  #1A2E3B;
+  --green:          #30A050;
+  --green-dark:     #42B362;
+  --green-light:    #1E3A28;
+  --teal:           #89C8F0;
+  --teal-dark:      #68B4E3;
+  --teal-light:     #1E2C3A;
+  --lime:           #A4D84E;
+  --bg:             #0f172a;
+  --surface:        #1e293b;
+  --text:           #f1f5f9;
+  --text-sec:       #94a3b8;
+  --border:         #334155;
+  --danger:         #ef4444;
+  --danger-light:   #3f1d24;
+  --warning:        #f59e0b;
+  --warning-light:  #452a10;
+  --ai-bubble:      #1e293b;
+  --user-bubble:    #2E7DBB;
+  --shadow:         0 2px 12px rgba(0,0,0,0.5);
+  --shadow-md:      0 6px 24px rgba(0,0,0,0.7);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -389,6 +415,12 @@ body {
   padding: 0; line-height: 1; flex-shrink: 0;
 }
 .btn-dismiss:hover { opacity: 1; }
+
+#offline-banner {
+  background: var(--warning-light);
+  color: #7a5a00;
+  border-bottom: 1px solid rgba(243,156,18,0.22);
+}
 
 /* ───────────────────────────────
    HEADER
