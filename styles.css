@@ -451,6 +451,17 @@ body {
   position: sticky; top: 0; z-index: 100;
   border-bottom: 2px solid var(--primary-light);
 }
+
+/* Ensure the header stays below the offline banner when it is sticky */
+main:has(#offline-banner[style*="display: block"]) .app-header {
+  top: 26px; /* Adjust based on offline banner height */
+}
+
+@media (max-width: 600px) {
+  main:has(#offline-banner[style*="display: block"]) .app-header {
+    top: 40px; /* Two lines of text on mobile */
+  }
+}
 .header-logo { display: flex; align-items: center; gap: 10px; }
 .header-logo img { height: 34px; width: auto; object-fit: contain; }
 .header-logo-fallback {
