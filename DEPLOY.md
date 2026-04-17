@@ -1,12 +1,12 @@
-# Guía de despliegue — Salud-Conecta AI v6.0.0
+# Guía de despliegue — Salud-Conecta AI v7.4.0
 
 ## Arquitectura
 
 ```
-Usuario (Granada) → GitHub Pages (frontend) → Cloudflare Worker (backend) → Anthropic Claude API
+Usuario (Granada) → GitHub Pages (frontend) → Cloudflare Worker (backend) → Groq API
 ```
 
-La API key de Anthropic vive únicamente en el Worker de Cloudflare.
+La API key de Groq vive únicamente en el Worker de Cloudflare.
 El usuario final nunca la ve ni la necesita.
 
 ---
@@ -16,7 +16,7 @@ El usuario final nunca la ve ni la necesita.
 ### Requisitos
 - Cuenta gratuita en cloudflare.com
 - Node.js instalado
-- La API key de Anthropic (sk-ant-...)
+- La API key de Groq (gsk-...)
 
 ### Comandos
 
@@ -31,8 +31,8 @@ wrangler login
 cd salud-conecta
 
 # Guardar la API key como Secret (seguro, nunca en código)
-wrangler secret put ANTHROPIC_API_KEY
-# → te pedirá pegar la clave: sk-ant-api03-...
+wrangler secret put GROQ_API_KEY
+# → te pedirá pegar la clave: gsk-...
 
 # Guardar el origen permitido (URL de tu GitHub Pages)
 wrangler secret put ALLOWED_ORIGIN
@@ -91,7 +91,7 @@ Para una app comunitaria de Granada, 100,000 peticiones/día es más que suficie
 ## Actualizar la API key en el futuro
 
 ```bash
-wrangler secret put ANTHROPIC_API_KEY
+wrangler secret put GROQ_API_KEY
 # → pegar la nueva clave
 wrangler deploy
 ```

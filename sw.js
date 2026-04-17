@@ -2,19 +2,19 @@
 ═══════════════════════════════════════════════════════════════
 SERVICE WORKER — Salud-Conecta AI
 ═══════════════════════════════════════════════════════════════
-📌 VERSIÓN: 7.3.3
-📌 CAMBIOS v15: Maintenance Update · Database Clean up
+📌 VERSIÓN: 7.4.0
+📌 CAMBIOS v16: Maintenance Update · Database Clean up
 📌 ESTRATEGIAS:
    - Shell (HTML/CSS/JS local): Network-First (Actualización rápida)
    - Leaflet / CDN:             Cache-First (larga duración)
    - openFDA:                   Network-First con fallback a cache
-   - Anthropic API:             Network-Only (nunca cachear respuestas de IA)
+   - Groq API:                  Network-Only (nunca cachear respuestas de IA)
    - Google Fonts:              Cache-First (máx. 30 entradas)
    - OpenStreetMap tiles:       Cache-First (máx. 100 tiles)
 ═══════════════════════════════════════════════════════════════
 */
 
-const CACHE_VERSION   = 'v15';
+const CACHE_VERSION   = 'v16';
 const CACHE_SHELL     = `salud-conecta-shell-${CACHE_VERSION}`;
 const CACHE_CDN       = `salud-conecta-cdn-${CACHE_VERSION}`;
 const CACHE_FDA       = `salud-conecta-fda-${CACHE_VERSION}`;
@@ -91,8 +91,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. API de Anthropic — NUNCA cachear (respuestas de IA deben ser siempre frescas)
-  if (url.hostname.includes('api.anthropic.com')) {
+  // 1. API de Groq — NUNCA cachear (respuestas de IA deben ser siempre frescas)
+  if (url.hostname.includes('api.groq.com')) {
     return; // Dejar pasar sin interceptar
   }
 

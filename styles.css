@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SALUD-CONECTA AI — Estilos v7.3.3 (Maintenance Update)
+   SALUD-CONECTA AI — Estilos v7.4.0 (Maintenance Update)
    Paleta: #2E7DBB · #204E84 · #30A050 · #A4D84E
    ═══════════════════════════════════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
@@ -31,6 +31,32 @@
   --radius-xs:      7px;
   --shadow:         0 2px 12px rgba(47,93,124,0.09);
   --shadow-md:      0 6px 24px rgba(47,93,124,0.16);
+}
+
+body.dark-mode {
+  --primary:        #68B4E3;
+  --primary-dark:   #2E7DBB;
+  --primary-light:  #1A2E3B;
+  --green:          #30A050;
+  --green-dark:     #42B362;
+  --green-light:    #1E3A28;
+  --teal:           #89C8F0;
+  --teal-dark:      #68B4E3;
+  --teal-light:     #1E2C3A;
+  --lime:           #A4D84E;
+  --bg:             #0f172a;
+  --surface:        #1e293b;
+  --text:           #f1f5f9;
+  --text-sec:       #94a3b8;
+  --border:         #334155;
+  --danger:         #ef4444;
+  --danger-light:   #3f1d24;
+  --warning:        #f59e0b;
+  --warning-light:  #452a10;
+  --ai-bubble:      #1e293b;
+  --user-bubble:    #2E7DBB;
+  --shadow:         0 2px 12px rgba(0,0,0,0.5);
+  --shadow-md:      0 6px 24px rgba(0,0,0,0.7);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -390,6 +416,15 @@ body {
 }
 .btn-dismiss:hover { opacity: 1; }
 
+#offline-banner {
+  background: var(--warning-light);
+  color: #7a5a00;
+  border-bottom: 1px solid rgba(243,156,18,0.22);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
 /* ───────────────────────────────
    HEADER
    ─────────────────────────────── */
@@ -418,6 +453,17 @@ body {
   box-shadow: var(--shadow);
   position: sticky; top: 0; z-index: 100;
   border-bottom: 2px solid var(--primary-light);
+}
+
+/* Ensure the header stays below the offline banner when it is sticky */
+main:has(#offline-banner[style*="display: block"]) .app-header {
+  top: 26px; /* Adjust based on offline banner height */
+}
+
+@media (max-width: 600px) {
+  main:has(#offline-banner[style*="display: block"]) .app-header {
+    top: 40px; /* Two lines of text on mobile */
+  }
 }
 .header-logo { display: flex; align-items: center; gap: 10px; }
 .header-logo img { height: 34px; width: auto; object-fit: contain; }
