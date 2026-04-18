@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     LOW:    ['dolor de cabeza', 'cansancio', 'gripe', 'resfriado', 'tos leve', 'malestar']
   };
 
-  const DRUG_KEYWORDS = ['pastilla', 'medicamento', 'medicamentos', 'droga', 'jarabe', 'tratamiento', 'para que sirve', 'dosis', 'medicina', 'inyeccion', 'suero', 'receta', 'farmacia'];
+  const DRUG_KEYWORDS = ['pastilla', 'medicamento', 'medicamentos', 'droga', 'jarabe', 'tratamiento', 'para que sirve', 'dosis', 'medicina', 'inyeccion', 'suero', 'receta', 'farmacia', 'remedio', 'algo para'];
 
   const COMMON_DRUGS = [
     // Analgésicos y antiinflamatorios

@@ -3339,7 +3339,7 @@ function buscarMultiplesMedicamentos(nombre) {
   // Create an array of words from the user input for exact matching
   const words = lower.split(/\s+/);
 
-  return MEDICAMENTOS.filter(m => {
+  const results = MEDICAMENTOS.filter(m => {
     const n_es = normalizar(m.nombre_es);
     const n_en = normalizar(m.nombre_en);
 
@@ -3372,11 +3372,43 @@ function buscarMultiplesMedicamentos(nombre) {
        return false;
     };
 
-    return isExactMatch(n_es) ||
-           isExactMatch(n_en) ||
-           m.nombres_comerciales.some(n => isExactMatch(normalizar(n))) ||
-           (m.sinonimos && m.sinonimos.some(s => isExactMatch(normalizar(s))));
+    const matchesName = isExactMatch(n_es) ||
+                        isExactMatch(n_en) ||
+                        m.nombres_comerciales.some(n => isExactMatch(normalizar(n))) ||
+                        (m.sinonimos && m.sinonimos.some(s => isExactMatch(normalizar(s))));
+
+    if (matchesName) return true;
+
+    // Also allow searching by general symptom or use case if the query is a direct request
+    // like "un medicamento para la tos" -> "tos"
+    const isDirectRequest = lower.includes("medicamento para") || lower.includes("pastilla para") || lower.includes("algo para") || lower.includes("jarabe para") || lower.includes("remedio para");
+    if (isDirectRequest) {
+      // Extract the key symptom by removing the common prefix
+      let intent = lower.replace(/.*(medicamento|pastilla|algo|jarabe|remedio) para\s+(el|la|las|los)?\s*/i, "").trim();
+      // Remove any trailing noise like "por favor"
+      intent = intent.replace(/ por favor.*/, "");
+
+      // Use exact match via \b to prevent matching random partial words in the uses string
+      if (intent.length >= 3) {
+        const intentEscaped = normalizar(intent).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const usageRegex = new RegExp(`\\b${intentEscaped}\\b`);
+        if (usageRegex.test(normalizar(m.uso_principal))) {
+           return true;
+        }
+      }
+    }
+
+    return false;
   });
+
+  // Limit to 1 recommendation if it's a generic symptom request, to avoid spam
+  // (e.g., matching "tos" might otherwise return 5 different syrups).
+  const isGeneric = lower.includes("medicamento para") || lower.includes("pastilla para") || lower.includes("algo para") || lower.includes("jarabe para") || lower.includes("remedio para");
+  if (isGeneric && results.length > 0) {
+     return [results[0]];
+  }
+
+  return results;
 }
 
 function obtenerTodosLosMedicamentos() { return MEDICAMENTOS; }
