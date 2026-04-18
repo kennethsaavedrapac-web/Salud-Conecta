@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     LOW:    ['dolor de cabeza', 'cansancio', 'gripe', 'resfriado', 'tos leve', 'malestar']
   };
 
-  const DRUG_KEYWORDS = ['pastilla', 'medicamento', 'droga', 'jarabe', 'tratamiento', 'para que sirve', 'dosis', 'medicina'];
+  const DRUG_KEYWORDS = ['pastilla', 'medicamento', 'medicamentos', 'droga', 'jarabe', 'tratamiento', 'para que sirve', 'dosis', 'medicina', 'inyeccion', 'suero', 'receta', 'farmacia'];
 
   const COMMON_DRUGS = [
     // Analgésicos y antiinflamatorios
@@ -1274,10 +1274,15 @@ document.addEventListener('DOMContentLoaded', () => {
       // ── GESTIÓN DE CONTEXTO (Mejorado v7.4.0: Conversacional-First) ──
       let contextData = { meds: [], symptoms: [], centers: [] };
       
-      // 1. Recolectar Medicamentos
-      contextData.meds = typeof buscarMultiplesMedicamentos === 'function' 
-        ? buscarMultiplesMedicamentos(lowerText) 
-        : (buscarMedicamento(lowerText) ? [buscarMedicamento(lowerText)] : []);
+      // 1. Recolectar Medicamentos (Solo si el usuario lo pide implícita o explícitamente)
+      const wantsMeds = DRUG_KEYWORDS.some(k => lowerText.includes(k)) ||
+                        COMMON_DRUGS.some(d => lowerText.includes(d));
+
+      if (wantsMeds) {
+        contextData.meds = typeof buscarMultiplesMedicamentos === 'function'
+          ? buscarMultiplesMedicamentos(lowerText)
+          : (buscarMedicamento(lowerText) ? [buscarMedicamento(lowerText)] : []);
+      }
       
       // 2. Recolectar Síntomas
       contextData.symptoms = typeof buscarMultiplesSintomas === 'function'

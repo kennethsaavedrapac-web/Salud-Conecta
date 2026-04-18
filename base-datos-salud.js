@@ -3335,19 +3335,47 @@ function buscarMedicamento(nombre) {
 function buscarMultiplesMedicamentos(nombre) {
   const lower = normalizar(nombre);
   if (lower.length < 3) return [];
+
+  // Create an array of words from the user input for exact matching
+  const words = lower.split(/\s+/);
+
   return MEDICAMENTOS.filter(m => {
     const n_es = normalizar(m.nombre_es);
     const n_en = normalizar(m.nombre_en);
-    return n_es.includes(lower) || lower.includes(n_es) ||
-           n_en.includes(lower) || lower.includes(n_en) ||
-           m.nombres_comerciales.some(n => {
-             const c = normalizar(n);
-             return c.includes(lower) || lower.includes(c);
-           }) ||
-           (m.sinonimos && m.sinonimos.some(s => {
-             const sn = normalizar(s);
-             return sn.includes(lower) || lower.includes(sn);
-           }));
+
+    // Check if any normalized medication name, commercial name, or synonym
+    // exactly matches a word in the user input, or if the user input
+    // contains the entire medication name.
+
+    const isExactMatch = (target) => {
+       if (!target) return false;
+       const targetNormalized = normalizar(target);
+       if (targetNormalized.length < 3) return false;
+
+       // check if the user query contains the whole phrase of the drug name.
+       // we use word boundaries (\b) which work fine here because normalizar()
+       // removes accents and leaves standard latin word characters.
+
+       // Escape special characters in the target phrase
+       const escapedTarget = targetNormalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+       // If the target is short (<= 4 chars) and the user input is a sentence (>3 words),
+       // do not match it even if it's a word boundary match.
+       // e.g. "tos" shouldn't trigger the drug card if the user writes "tengo tos y me pasaba todo el dia"
+       if (targetNormalized.length <= 4 && words.length > 3) {
+           return false;
+       }
+
+       const regex = new RegExp(`\\b${escapedTarget}\\b`);
+       if (regex.test(lower)) return true;
+
+       return false;
+    };
+
+    return isExactMatch(n_es) ||
+           isExactMatch(n_en) ||
+           m.nombres_comerciales.some(n => isExactMatch(normalizar(n))) ||
+           (m.sinonimos && m.sinonimos.some(s => isExactMatch(normalizar(s))));
   });
 }
 
@@ -3446,6 +3474,7 @@ if (typeof module !== 'undefined' && module.exports) {
     buscarCentrosPorBarrio,
     buscarCentrosCercanos,
     buscarMedicamento,
+    buscarMultiplesMedicamentos,
     obtenerTodosLosMedicamentos,
     buscarSintoma,
     obtenerTodosLosSintomas,
