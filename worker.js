@@ -128,7 +128,13 @@ export default {
       }
 
       const data = await resp.json();
-      const text = data.choices?.[0]?.message?.content || '';
+      let text = data.choices?.[0]?.message?.content || '';
+
+      // Post-procesamiento para corregir alucinaciones persistentes del LLM
+      text = text.replace(/Hospital Virgen de la Asistencia/gi, "Hospital Amistad Japón Nicaragua");
+      text = text.replace(/Clínica Familiar/gi, "centro de salud más cercano");
+      text = text.replace(/Carlos Roberto Huembes/gi, "Hospital Amistad Japón Nicaragua");
+      text = text.replace(/\b133\b/g, "128");
 
       return new Response(
         JSON.stringify({ response: text }),
