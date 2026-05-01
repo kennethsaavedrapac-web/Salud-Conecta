@@ -1,6 +1,6 @@
 /**
 ═══════════════════════════════════════════════════════════════
-SALUD-CONECTA AI — Cloudflare Worker (Backend Proxy)
+SALUD-CONECTA IA — Cloudflare Worker (Backend Proxy)
 ═══════════════════════════════════════════════════════════════
 IA: Groq (Llama 3.3 70B) — Gratis, sin restricciones por país
 14,400 peticiones/día gratis · Funciona en Nicaragua

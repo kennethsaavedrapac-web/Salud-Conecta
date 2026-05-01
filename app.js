@@ -1,6 +1,6 @@
 /**
 ═══════════════════════════════════════════════════════════════
-SALUD-CONECTA AI — App Principal
+SALUD-CONECTA IA — App Principal
 ═══════════════════════════════════════════════════════════════
 📌 VERSIÓN: 7.4.0
 📌 CAMBIOS: Maintenance Update · Database Clean up
@@ -1426,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lines = [];
     const now = getLocalTimestamp();
     const summary = generateClinicalSummary();
-    lines.push('SALUD-CONECTA AI — REPORTE DE CONSULTA');
+    lines.push('SALUD-CONECTA IA — REPORTE DE CONSULTA');
     lines.push('=======================================');
     lines.push(`Fecha: ${now}`);
     lines.push(`Ubicación: ${includeLocationCheckbox?.checked ? 'Granada, Nicaragua' : '[Ocultada]'}`);
@@ -1464,7 +1464,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     lines.push('-------------------------------------------');
     lines.push('⚠️ No es diagnóstico médico. Emergencias: 128');
-    lines.push('Salud-Conecta AI v7.4.0');
+    lines.push('Salud-Conecta IA v7.4.0');
     return lines.join('\n');
   }
 
@@ -1993,5 +1993,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  console.log('🏥 Salud-Conecta AI v7.4.0 iniciada · Worker:', WORKER_URL);
+  console.log('🏥 Salud-Conecta IA v7.4.0 iniciada · Worker:', WORKER_URL);
 });
