@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═══════════════════════════════════════════════════════════════
   //  CONFIGURACIÓN DEL PROXY BACKEND
   // ═══════════════════════════════════════════════════════════════
-  const WORKER_URL = 'https://salud-conecta-api.salud-conecta.workers.dev/chat';
+  const WORKER_URL = 'https://salud-conecta-api.salud-conecta.workers.dev/chat'; // Production Worker URL
   const MAX_HISTORY = 20;
 
   // ═══════════════════════════════════════════════════════════════
@@ -1243,12 +1243,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const RESPONSES = {
       HIGH: {
         text:    '🔴 URGENCIA ALTA — Los síntomas que describes pueden indicar una condición grave.',
-        action:  'Llama al 128 ahora o dirígete inmediatamente al Hospital Amistad Japón Nicaragua (Tel: 2552-7050, 24h, público) o al Hospital SERMESA (Tel: 2552-4444).',
+        action:  'Llama al 128 ahora o dirígete inmediatamente al Hospital Amistad Japón Nicaragua (Tel: 2552-7050, 24h, público).',
         urgency: 'ALTA'
       },
       MEDIUM: {
         text:    '🟡 URGENCIA MEDIA — Deberías consultar con un profesional pronto.',
-        action:  'Programa una cita en los próximos 1-2 días. Puedes ir al Centro de Salud Jorge Sinforoso Bravo o a tu centro de salud local del MINSA. ¿Quieres ver centros cercanos en el mapa?',
+        action:  'Programa una cita en los próximos 1-2 días. Puedes ir al Hospital Amistad Japón Nicaragua o puedes visitar tu centro de salud mas cercano, míralo en el mapa.',
         urgency: 'MEDIA'
       },
       LOW: {

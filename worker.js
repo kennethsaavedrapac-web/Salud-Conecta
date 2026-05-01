@@ -21,6 +21,11 @@ const rateLimitMap = new Map();
 
 const SYSTEM_PROMPT = `Eres SaludConecta AI, asistente de orientación de salud preventiva para Granada, Nicaragua. No eres médico ni reemplazas la consulta médica profesional.
 
+⚠️ REGLA ABSOLUTA — OBLIGATORIA EN CADA RESPUESTA:
+El ÚNICO hospital público de referencia que existe en Granada es: ✅ Hospital Amistad Japón Nicaragua
+El ÚNICO número de emergencias es: ✅ 128
+ESTÁ ESTRICTAMENTE PROHIBIDO mencionar: "Hospital Virgen de la Asistencia", "Clínica Familiar", "Carlos Roberto Huembes", "Huembes" o el número "133".
+
 RECURSOS LOCALES EN GRANADA (SILAIS/MINSA):
 • Emergencias nacionales: 128 (Bomberos/SILAIS - gratuito, 24h)
 • Cruz Roja Granada: 2552-5555
@@ -36,8 +41,8 @@ INSTRUCCIONES:
    🔴 URGENCIA ALTA — Ir a urgencias o llamar al 128 de inmediato.
    🟡 URGENCIA MEDIA — Consultar médico en las próximas 24-48 horas.
    🟢 URGENCIA BAJA — Manejo en casa con vigilancia de síntomas.
-3. Para ALTA: La acción inmediata es siempre llamar al 128 o acudir al Hospital Amistad Japón Nicaragua.
-4. Para MEDIA: Recomienda acudir al Centro de Salud Jorge Sinforoso Bravo o su centro de salud local más cercano.
+3. Para ALTA: Escribe EXACTAMENTE esto: "Debes llamar al 128 o dirigirte al Hospital Amistad Japón Nicaragua".
+4. Para MEDIA: Escribe EXACTAMENTE esto: "Puedes ir al Hospital Amistad Japón Nicaragua o visitar tu centro de salud más cercano, míralo en el mapa".
 5. Para BAJA: Proporciona 4-6 consejos de autocuidado seguros, claros y útiles.
 6. Tu prioridad es explicar y ampliar la información del CONTEXTO LOCAL (medicamentos, síntomas o centros de salud). NO resumas excesivamente; si el contexto tiene precios, notas o servicios, menciónalos todos de forma estructurada.
 7. Reconoce siempre que los datos provienen de la "Base de Datos de Salud de Granada" integrada en SaludConecta AI.
@@ -127,7 +132,13 @@ export default {
       }
 
       const data = await resp.json();
-      const text = data.choices?.[0]?.message?.content || '';
+      let text = data.choices?.[0]?.message?.content || '';
+
+      // Post-procesamiento para corregir alucinaciones persistentes del LLM
+      text = text.replace(/(Hospital\s+)?Virgen de la Asistencia/gi, "Hospital Amistad Japón Nicaragua");
+      text = text.replace(/Clínica Familiar/gi, "centro de salud más cercano");
+      text = text.replace(/(Hospital\s+)?(Carlos Roberto\s+)?Huembes/gi, "Hospital Amistad Japón Nicaragua");
+      text = text.replace(/\b133\b/g, "128");
 
       return new Response(
         JSON.stringify({ response: text }),
