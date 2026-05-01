@@ -1,6 +1,6 @@
 /**
 ═══════════════════════════════════════════════════════════════
-SERVICE WORKER — Salud-Conecta AI
+SERVICE WORKER — Salud-Conecta IA
 ═══════════════════════════════════════════════════════════════
 📌 VERSIÓN: 7.4.0
 📌 CAMBIOS v16: Maintenance Update · Database Clean up

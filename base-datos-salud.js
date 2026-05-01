@@ -1,6 +1,6 @@
 /**
 ═══════════════════════════════════════════════════════════════
-BASE DE DATOS DE SALUD — Salud-Conecta AI (Granada, Nicaragua)
+BASE DE DATOS DE SALUD — Salud-Conecta IA (Granada, Nicaragua)
 ═══════════════════════════════════════════════════════════════
 📌 VERSIÓN: 7.4.0
 📌 ÚLTIMA ACTUALIZACIÓN: 2026-04-15

@@ -1,4 +1,4 @@
-# Guía de despliegue — Salud-Conecta AI v7.4.0
+# Guía de despliegue — Salud-Conecta IA v7.4.0
 
 ## Arquitectura
 
