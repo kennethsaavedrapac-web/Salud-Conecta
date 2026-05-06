@@ -353,15 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  const btnLogout = document.getElementById('btn-logout');
-  if (btnLogout) {
-    btnLogout.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      // Cerrar modal de perfil si está abierto
-      const profileContainer = document.getElementById('profile-container');
-      if (profileContainer) profileContainer.style.display = 'none';
-    });
-  }
+
 
   // ═══════════════════════════════════════════════════════════════
   //  UTILIDADES
@@ -2025,15 +2017,17 @@ function displayHealthFacilities(facilities, userLat, userLng) {
   if (btnCancelProfile) btnCancelProfile.addEventListener('click', closeProfile);
   if (btnSaveProfile)   btnSaveProfile.addEventListener('click', saveProfile);
 
-  if (btnLogout) btnLogout.addEventListener('click', () => {
+  if (btnLogout) btnLogout.addEventListener('click', async () => {
     if (confirm('¿Cerrar sesión? Tendrás que ingresar tu PIN la próxima vez.')) {
-      clearSession();
+      await supabase.auth.signOut();
       appState.currentUser = null;
       appState.conversationHistory = [];
       if (appContent) appContent.style.display = 'none';
       if (authScreen) authScreen.style.display = 'flex';
       clearPins();
       showAuthTab('login');
+      // Cerrar modal de perfil si está abierto
+      if (profileContainer) profileContainer.style.display = 'none';
     }
   });
 
