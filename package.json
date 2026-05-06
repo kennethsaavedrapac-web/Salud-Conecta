@@ -1,0 +1,17 @@
+{
+  "name": "salud-conecta",
+  "version": "1.0.0",
+  "description": "Proyecto de aplicación de salud",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "jest",
+    "build": "echo 'build step not defined'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}

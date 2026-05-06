@@ -572,42 +572,57 @@ document.addEventListener('DOMContentLoaded', () => {
   //  GROQ API — VÍA PROXY BACKEND (worker.js)
   //  La API key vive en el servidor. El usuario nunca la ve ni toca.
   // ═══════════════════════════════════════════════════════════════
-  async function callGroqAPI(userMessage) {
-    // Añadir mensaje al historial
-    appState.conversationHistory.push({ role: 'user', content: userMessage });
+   async function callGroqAPI(userMessage) {
+     // Añadir mensaje al historial
+     appState.conversationHistory.push({ role: 'user', content: userMessage });
 
-    // Mantener ventana de contexto razonable
-    if (appState.conversationHistory.length > MAX_HISTORY) {
-      appState.conversationHistory.splice(0, 2);
-    }
+     // Mantener ventana de contexto razonable
+     if (appState.conversationHistory.length > MAX_HISTORY) {
+       appState.conversationHistory.splice(0, 2);
+     }
 
-    try {
-      const response = await fetch(WORKER_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ messages: appState.conversationHistory })
-      });
+     try {
+       // Inyectar contexto de ubicación en tiempo real para la "Regla de Oro"
+       const contextPayload = [];
+       const userLoc = appState.userLocation;
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `HTTP ${response.status}`);
-      }
+       if (userLoc) {
+         const locationContext = {
+           role: 'system',
+           content: `[CONTEXTO-GEO-EN-TIEMPO-REAL] Usuario está en lat=${userLoc.lat?.toFixed(5)}, lng=${userLoc.lng?.toFixed(5)} (precisión: ${Math.round(userLoc.accuracy || 0)}m). Usa datos reales de ruta 'route' cuando existan para priorizar Hospital Amistad Japón Nicaragua y recomendar el centro más cercano.`
+         };
+         contextPayload.push(locationContext);
+       }
 
-      const data = await response.json();
-      const assistantMessage = data.response;
+       // Preparar mensajes: contexto + historial
+       const messages = [...contextPayload, ...appState.conversationHistory];
 
-      // Guardar respuesta en historial
-      appState.conversationHistory.push({ role: 'assistant', content: assistantMessage });
+       const response = await fetch(WORKER_URL, {
+         method:  'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body:    JSON.stringify({ messages })
+       });
 
-      return assistantMessage;
+       if (!response.ok) {
+         const errData = await response.json().catch(() => ({}));
+         throw new Error(errData.error || `HTTP ${response.status}`);
+       }
 
-    } catch (error) {
-      console.error('Worker error:', error);
-      // Revertir mensaje del usuario del historial
-      appState.conversationHistory.pop();
-      return null;
-    }
-  }
+       const data = await response.json();
+       const assistantMessage = data.response;
+
+       // Guardar respuesta en historial
+       appState.conversationHistory.push({ role: 'assistant', content: assistantMessage });
+
+       return assistantMessage;
+
+     } catch (error) {
+       console.error('Worker error:', error);
+       // Revertir mensaje del usuario del historial
+       appState.conversationHistory.pop();
+       return null;
+     }
+   }
 
   function detectUrgencyFromResponse(responseText) {
     if (responseText.includes('🔴') || responseText.includes('URGENCIA ALTA')) return 'ALTA';
@@ -685,28 +700,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  //  GEOLOCALIZACION Y MAPA
-  // ═══════════════════════════════════════════════════════════════
-  function startLocationTracking() {
-    if (!navigator.geolocation) return;
-    
-    if (appState.watchId) navigator.geolocation.clearWatch(appState.watchId);
-    
-    appState.watchId = navigator.geolocation.watchPosition(
-      pos => {
-        appState.userLocation = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          timestamp: pos.timestamp
-        };
-        console.log("📍 Ubicación actualizada:", appState.userLocation.lat, appState.userLocation.lng);
-      },
-      err => console.warn("⚠️ Error en watchPosition:", err.message),
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
-  }
+   // ═══════════════════════════════════════════════════════════════
+   //  GEOLOCALIZACION Y MAPA
+   // ═══════════════════════════════════════════════════════════════
+   function updateLocation(pos) {
+     const { latitude, longitude, accuracy } = pos.coords;
+     appState.userLocation = { lat: latitude, lng: longitude, accuracy, timestamp: pos.timestamp };
+     console.log(`📍 Posición: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+     // Si el mapa ya está inicializado, actualizar marcador y re‑buscar
+     if (appState.map) {
+       appState.userMarker.setLatLng([latitude, longitude]);
+       displayNearbyHealthCenters();  // busca y vuelve a mostrar
+     }
+   }
+
+   function geoErr(err) {
+     console.warn(`⚠️ Geolocalización: ${err.message}`);
+   }
+
+   function startLocationTracking() {
+     if (!navigator.geolocation) return;
+     
+     if (appState.watchId) navigator.geolocation.clearWatch(appState.watchId);
+     
+     const opts = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
+     appState.watchId = navigator.geolocation.watchPosition(updateLocation, geoErr, opts);
+   }
 
   async function getRouteData(startLat, startLng, endLat, endLng) {
     try {
@@ -805,103 +824,117 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // CORRECCIÓN BUG: Eliminada función duplicada — se usa calcularDistancia de base-datos-salud.js
 
-  function displayHealthFacilities(facilities, userLat, userLng) {
-    if (!mapResults) return;
-    mapResults.innerHTML = '';
+function displayHealthFacilities(facilities, userLat, userLng) {
+     if (!mapResults) return;
+     mapResults.innerHTML = '';
 
-    if (appState.healthMarkers) {
-      appState.healthMarkers.forEach(m => appState.map && appState.map.removeLayer(m));
-      appState.healthMarkers = [];
-    }
+     if (appState.healthMarkers) {
+       appState.healthMarkers.forEach(m => appState.map && appState.map.removeLayer(m));
+       appState.healthMarkers = [];
+     }
 
-    if (!facilities || facilities.length === 0) {
-      mapResults.innerHTML = '<p style="text-align:center;color:var(--gray-text);">No se encontraron centros. Intenta ampliar la búsqueda o reporta uno nuevo.</p>';
-      return;
-    }
+     if (!facilities || facilities.length === 0) {
+       mapResults.innerHTML = '<p style="text-align:center;color:var(--gray-text);">No se encontraron centros. Intenta ampliar la búsqueda o reporta uno nuevo.</p>';
+       return;
+     }
 
-    facilities.forEach(facility => {
-      const lat  = facility.lat  || facility.center?.lat;
-      const lng  = facility.lon  || facility.center?.lon || facility.lng;
-      if (!lat || !lng) return;
+     // Identificar el centro más cercano
+     let nearest = null;
+     facilities.forEach(f => {
+       if (!nearest || f.distance < nearest.distance) nearest = f;
+     });
 
-      const name     = facility.tags?.name    || facility.nombre    || 'Sin nombre';
-      const type     = facility.tags?.amenity || facility.categoria || 'health';
-      const address  = facility.tags?.['addr:street'] || facility.direccion || '';
-      // CORRECCIÓN BUG: usar 'distance' consistente
-      const distance = facility.distance !== undefined
-        ? facility.distance
-        : calcularDistancia(userLat, userLng, lat, lng);
+     facilities.forEach(facility => {
+       const lat  = facility.lat  || facility.center?.lat;
+       const lng  = facility.lon  || facility.center?.lon || facility.lng;
+       if (!lat || !lng) return;
 
-      // Usar ícono personalizado por categoría
-      const iconoMarcador = crearIconoCategoria(type, facility.emergencia || false);
-      const marker = L.marker([lat, lng], { icon: iconoMarcador }).addTo(appState.map);
+       const name     = facility.tags?.name    || facility.nombre    || 'Sin nombre';
+       const type     = facility.tags?.amenity || facility.categoria || 'health';
+       const address  = facility.tags?.['addr:street'] || facility.direccion || '';
+       // CORRECCIÓN BUG: usar 'distance' consistente
+       const distance = facility.distance !== undefined
+         ? facility.distance
+         : calcularDistancia(userLat, userLng, lat, lng);
 
-      // Etiqueta del tipo en español
-      const tipoLabel = {
-        hospital: 'Hospital', clinica: 'Clínica', farmacia: 'Farmacia',
-        doctors: 'Consultorio', laboratory: 'Laboratorio', health: 'Salud'
-      }[type] || type;
+       // Determinar si este es el centro más cercano para resaltarlo
+       const isNearest = nearest && facility === nearest;
+       const iconoMarcador = isNearest 
+         ? L.divIcon({
+             className: '',
+             html: `<div style="background:#ff9800;width:36px;height:36px;border-radius:50%;border:3px solid white;box-shadow:0 0 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><span style="font-size:18px;line-height:1;">🚑</span></div>`,
+             iconSize: [36, 36], iconAnchor: [18, 36]
+           })
+         : crearIconoCategoria(type, facility.emergencia || false);
 
-      const horario = facility.horario || '';
-      const telefono = facility.telefono || '';
-      const seguros = facility.seguros ? facility.seguros.join(', ') : '';
-      const notas = facility.notas || '';
-      const serviciosList = facility.servicios ? facility.servicios.map(s => SERVICIOS_LABELS[s] || s).join(', ') : '';
+       const marker = L.marker([lat, lng], { icon: iconoMarcador }).addTo(appState.map);
 
-      marker.bindPopup(`
-        <div style="min-width:200px;">
-          <strong>${name}</strong><br>
-          <span style="color:#666;font-size:0.85em;">${tipoLabel} · ${distance}m</span><hr style="margin:5px 0;border:0;border-top:1px solid #eee;">
-          ${address ? `📍 ${address}<br>` : ''}
-          ${horario  ? `🕐 ${horario}<br>` : ''}
-          ${telefono ? `📞 ${telefono}<br>` : ''}
-          ${serviciosList ? `<div style="font-size:0.8em;margin-top:4px;">✨ <b>Servicios:</b> ${serviciosList}</div>` : ''}
-          ${seguros  ? `<div style="font-size:0.8em;">🏥 <b>Seguros:</b> ${seguros}</div>` : ''}
-          ${notas ? `<div style="font-size:0.8em;color:var(--text-sec);font-style:italic;margin-top:4px;">ℹ️ ${notas}</div>` : ''}
-          <br><a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}"
-            target="_blank"
-            style="background:#2E7DBB;color:white;padding:6px 12px;border-radius:8px;text-decoration:none;font-size:0.82rem;display:inline-block;width:100%;text-align:center;">
-            Cómo llegar ↗
-          </a>
-        </div>`);
-      appState.healthMarkers.push(marker);
+       // Etiqueta del tipo en español
+       const tipoLabel = {
+         hospital: 'Hospital', clinica: 'Clínica', farmacia: 'Farmacia',
+         doctors: 'Consultorio', laboratory: 'Laboratorio', health: 'Salud'
+       }[type] || type;
 
-      // Ícono emoji por tipo para la lista
-      const iconoEmoji = {
-        hospital: '🏥', clinica: '🏥', farmacia: '💊',
-        doctors: '👨‍⚕️', laboratory: '🔬', health: '📍'
-      }[type] || '📍';
+       const horario = facility.horario || '';
+       const telefono = facility.telefono || '';
+       const seguros = facility.seguros ? facility.seguros.join(', ') : '';
+       const notas = facility.notas || '';
+       const serviciosList = facility.servicios ? facility.servicios.map(s => SERVICIOS_LABELS[s] || s).join(', ') : '';
 
-      const resultItem = document.createElement('div');
-      resultItem.className = 'map-result-item';
-      resultItem.style.cursor = 'pointer';
-      resultItem.innerHTML = `
-        <div class="map-result-icon">${iconoEmoji}</div>
-        <div class="map-result-info">
-          <div class="map-result-name">${name}</div>
-          <div class="map-result-type">${tipoLabel} · ${distance}m${address ? ' · ' + address : ''}</div>
-          ${horario ? `<div class="map-result-horario">🕐 ${horario}</div>` : ''}
-          ${serviciosList ? `<div style="font-size:0.72rem;color:var(--text-sec);margin-top:2px;">✨ ${serviciosList}</div>` : ''}
-          ${notas ? `<div style="font-size:0.72rem;color:var(--text-sec);font-style:italic;margin-top:2px;">ℹ️ ${notas}</div>` : ''}
-        </div>
-        <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&origin=${userLat},${userLng}"
-           class="btn-directions" target="_blank" rel="noopener">Ir ↗</a>`;
+       marker.bindPopup(`
+         <div style="min-width:200px;">
+           <strong>${name}</strong><br>
+           <span style="color:#666;font-size:0.85em;">${tipoLabel} · ${distance}m</span><hr style="margin:5px 0;border:0;border-top:1px solid #eee;">
+           ${address ? `📍 ${address}<br>` : ''}
+           ${horario  ? `🕐 ${horario}<br>` : ''}
+           ${telefono ? `📞 ${telefono}<br>` : ''}
+           ${serviciosList ? `<div style="font-size:0.8em;margin-top:4px;">✨ <b>Servicios:</b> ${serviciosList}</div>` : ''}
+           ${seguros  ? `<div style="font-size:0.8em;">🏥 <b>Seguros:</b> ${seguros}</div>` : ''}
+           ${notas ? `<div style="font-size:0.8em;color:var(--text-sec);font-style:italic;margin-top:4px;">ℹ️ ${notas}</div>` : ''}
+           <br><a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}"
+             target="_blank"
+             style="background:#2E7DBB;color:white;padding:6px 12px;border-radius:8px;text-decoration:none;font-size:0.82rem;display:inline-block;width:100%;text-align:center;">
+             Cómo llegar ↗
+           </a>
+         </div>`);
+       appState.healthMarkers.push(marker);
 
-      // Al tocar el ítem en la lista, abrir el popup del marcador en el mapa
-      resultItem.addEventListener('click', (e) => {
-        if (e.target.classList.contains('btn-directions')) return;
-        marker.openPopup();
-        appState.map.setView([lat, lng], 16);
-      });
+       // Ícono emoji por tipo para la lista
+       const iconoEmoji = {
+         hospital: '🏥', clinica: '🏥', farmacia: '💊',
+         doctors: '👨‍⚕️', laboratory: '🔬', health: '📍'
+       }[type] || '📍';
 
-      mapResults.appendChild(resultItem);
-    });
+       const resultItem = document.createElement('div');
+       resultItem.className = 'map-result-item';
+       resultItem.style.cursor = 'pointer';
+       resultItem.innerHTML = `
+         <div class="map-result-icon">${iconoEmoji}</div>
+         <div class="map-result-info">
+           <div class="map-result-name">${name}${isNearest ? ' <span style="color:#ff9800;font-weight:bold;">(Más cercano)</span>' : ''}</div>
+           <div class="map-result-type">${tipoLabel} · ${distance}m${address ? ' · ' + address : ''}</div>
+           ${horario ? `<div class="map-result-horario">🕐 ${horario}</div>` : ''}
+           ${serviciosList ? `<div style="font-size:0.72rem;color:var(--text-sec);margin-top:2px;">✨ ${serviciosList}</div>` : ''}
+           ${notas ? `<div style="font-size:0.72rem;color:var(--text-sec);font-style:italic;margin-top:2px;">ℹ️ ${notas}</div>` : ''}
+         </div>
+         <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&origin=${userLat},${userLng}"
+            class="btn-directions" target="_blank" rel="noopener">Ir ↗</a>`;
 
-    if (appState.map && appState.healthMarkers.length > 0) {
-      const group = new L.featureGroup([...appState.healthMarkers, appState.userMarker]);
-      appState.map.fitBounds(group.getBounds().pad(0.1));
-    }
-  }
+       // Al tocar el ítem en la lista, abrir el popup del marcador en el mapa
+       resultItem.addEventListener('click', (e) => {
+         if (e.target.classList.contains('btn-directions')) return;
+         marker.openPopup();
+         appState.map.setView([lat, lng], 16);
+       });
+
+       mapResults.appendChild(resultItem);
+     });
+
+     if (appState.map && appState.healthMarkers.length > 0) {
+       const group = new L.featureGroup([...appState.healthMarkers, appState.userMarker]);
+       appState.map.fitBounds(group.getBounds().pad(0.1));
+     }
+   }
 
   async function showNearbyHealthCenters() {
     if (mapContainer) mapContainer.style.display = 'block';
@@ -1319,22 +1352,23 @@ document.addEventListener('DOMContentLoaded', () => {
         ? buscarMultiplesSintomas(lowerText)
         : (buscarSintoma(lowerText) ? [buscarSintoma(lowerText)] : []);
 
-      // 3. Recolectar Centros (si menciona palabras clave)
-      const keywordsCentros = ['mapa','centro','hospital','farmacia','clinica','cerca','laboratorio'];
-      if (keywordsCentros.some(k => lowerText.includes(k))) {
-        const facilities = await searchHealthFacilities(appState.userLocation.lat, appState.userLocation.lng, 5000);
-        
-        // Enriquecer los 3 primeros con datos de ruta real
-        contextData.centers = await Promise.all(facilities.slice(0, 3).map(async f => {
-          const lat = f.lat || f.center?.lat;
-          const lng = f.lng || f.center?.lon;
-          const route = await getRouteData(appState.userLocation.lat, appState.userLocation.lng, lat, lng);
-          return { ...f, route };
-        }));
+  // searchHealthFacilities ya tiene la lógica de obtener centros con distancia
+       // 3. Recolectar Centros (si menciona palabras clave)
+       const keywordsCentros = ['mapa','centro','hospital','farmacia','clinica','cerca','laboratorio'];
+       if (keywordsCentros.some(k => lowerText.includes(k))) {
+         const facilities = await searchHealthFacilities(appState.userLocation.lat, appState.userLocation.lng, 5000);
+         
+         // Enriquecer los 3 primeros con datos de ruta real
+         contextData.centers = await Promise.all(facilities.slice(0, 3).map(async f => {
+           const lat = f.lat || f.center?.lat;
+           const lng = f.lng || f.center?.lon || f.lon;
+           const route = await getRouteData(appState.userLocation.lat, appState.userLocation.lng, lat, lng);
+           return { ...f, route };
+         }));
 
-        // El resto se queda con distancia lineal
-        contextData.centers = [...contextData.centers, ...facilities.slice(3)];
-      }
+         // El resto se queda con distancia lineal
+         contextData.centers = [...contextData.centers, ...facilities.slice(3)];
+       }
 
       // ── ACCIONES VISUALES (Intercepción no excluyente) ──
       
