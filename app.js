@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     conversationHistory:   [],
     isRecording:           false,
     recognition:           null,
+    watchId:               null,
     symptomCache:          {},
     drugCache:             {},
     currentUser:           null  // perfil del usuario autenticado
@@ -687,18 +688,47 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═══════════════════════════════════════════════════════════════
   //  GEOLOCALIZACION Y MAPA
   // ═══════════════════════════════════════════════════════════════
-  async function getUserLocation() {
-    return new Promise(resolve => {
-      if (!navigator.geolocation) {
-        resolve({ lat: 11.9344, lng: -85.9560, fallback: true });
-        return;
+  function startLocationTracking() {
+    if (!navigator.geolocation) return;
+    
+    if (appState.watchId) navigator.geolocation.clearWatch(appState.watchId);
+    
+    appState.watchId = navigator.geolocation.watchPosition(
+      pos => {
+        appState.userLocation = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          timestamp: pos.timestamp
+        };
+        console.log("📍 Ubicación actualizada:", appState.userLocation.lat, appState.userLocation.lng);
+      },
+      err => console.warn("⚠️ Error en watchPosition:", err.message),
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  }
+
+  async function getRouteData(startLat, startLng, endLat, endLng) {
+    try {
+      // Usamos el servicio público de OSRM para obtener distancia real por calle y tiempo
+      const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=false`);
+      const data = await resp.json();
+      if (data.code === 'Ok') {
+        const route = data.routes[0];
+        return {
+          distanceKm: (route.distance / 1000).toFixed(1),
+          durationMin: Math.round(route.duration / 60)
+        };
       }
-      navigator.geolocation.getCurrentPosition(
-        pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-        () => resolve({ lat: 11.9344, lng: -85.9560, fallback: true }),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-      );
-    });
+    } catch (e) {
+      console.error("Error obteniendo ruta real:", e);
+    }
+    return null;
+  }
+
+  async function getUserLocation() {
+    if (appState.userLocation) return appState.userLocation;
+    return { lat: 11.9344, lng: -85.9560, fallback: true };
   }
 
   // ── Íconos de Leaflet por categoría (divIcon evita rutas rotas en GitHub Pages)
@@ -1271,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       showTyping(true);
-      // ── GESTIÓN DE CONTEXTO (Mejorado v7.4.0: Conversacional-First) ──
+      // ── GESTIÓN DE CONTEXTO (Mejorado v7.5.0: Geolocalización en tiempo real) ──
       let contextData = { meds: [], symptoms: [], centers: [] };
       
       // 1. Recolectar Medicamentos (Solo si el usuario lo pide implícita o explícitamente)
@@ -1292,8 +1322,18 @@ document.addEventListener('DOMContentLoaded', () => {
       // 3. Recolectar Centros (si menciona palabras clave)
       const keywordsCentros = ['mapa','centro','hospital','farmacia','clinica','cerca','laboratorio'];
       if (keywordsCentros.some(k => lowerText.includes(k))) {
-        const location = await getUserLocation();
-        contextData.centers = await searchHealthFacilities(location.lat, location.lng, 5000);
+        const facilities = await searchHealthFacilities(appState.userLocation.lat, appState.userLocation.lng, 5000);
+        
+        // Enriquecer los 3 primeros con datos de ruta real
+        contextData.centers = await Promise.all(facilities.slice(0, 3).map(async f => {
+          const lat = f.lat || f.center?.lat;
+          const lng = f.lng || f.center?.lon;
+          const route = await getRouteData(appState.userLocation.lat, appState.userLocation.lng, lat, lng);
+          return { ...f, route };
+        }));
+
+        // El resto se queda con distancia lineal
+        contextData.centers = [...contextData.centers, ...facilities.slice(3)];
       }
 
       // ── ACCIONES VISUALES (Intercepción no excluyente) ──
@@ -1338,24 +1378,41 @@ document.addEventListener('DOMContentLoaded', () => {
       if (contextData.meds.length > 0) contextPrompt += `\n[MEDICAMENTOS ENCONTRADOS: ${JSON.stringify(contextData.meds)}]`;
       if (contextData.symptoms.length > 0) contextPrompt += `\n[SÍNTOMAS ENCONTRADOS: ${JSON.stringify(contextData.symptoms)}]`;
       if (contextData.centers.length > 0) {
-        // Incluimos más centros para que la IA tenga la lista completa de Granada
-        contextPrompt += `\n[CENTROS CERCANOS EN GRANADA: ${JSON.stringify(contextData.centers.slice(0, 20))}]`;
+        contextPrompt += `\n[UBICACIÓN ACTUAL USUARIO: ${appState.userLocation.lat}, ${appState.userLocation.lng}]`;
+        contextPrompt += `\n[CENTROS CERCANOS Y RUTAS: ${JSON.stringify(contextData.centers.slice(0, 5))}]`;
       }
 
       const textWithContext = contextPrompt 
-        ? `${text}\n\nCONTEXTO LOCAL (USA ESTO PARA RESPONDER DETALLADAMENTE Y NO LO CORTES):${contextPrompt}` 
+        ? `${text}\n\nCONTEXTO GEOGRÁFICO EN TIEMPO REAL (Usa la distancia real y el tiempo estimado 'route' para dar tu recomendación):${contextPrompt}` 
         : text;
 
       // Si el worker falla (sin internet, no desplegado), usa respuestas básicas automáticamente
       const response = await callGroqAPI(textWithContext);
       if (response) {
         const urgency = detectUrgencyFromResponse(response);
-        addMessage(response, 'ai', urgency, getShortTime());
+
+        // 📳 Haptic Feedback: Vibración en caso de urgencia ALTA
+        if (urgency === 'ALTA' && navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]); 
+        }
+
+        // Detectar si la IA mencionó alguno de los centros cercanos para vincular el botón
+        const mentionedCenter = contextData.centers.find(c => response.includes(c.nombre));
+        addMessage(response, 'ai', urgency, getShortTime(), mentionedCenter);
       } else {
         // Fallback automático cuando el worker no está disponible
         const urgency = detectUrgency(text);
         const mock = generateMockResponse(urgency);
-        addMessage(mock.text + '\n\n' + mock.action, 'ai', mock.urgency, getShortTime());
+
+        // También activar vibración en el modo de respuesta local/offline
+        if (mock.urgency === 'ALTA' && navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]);
+        }
+
+        // En el fallback también intentamos vincular el centro (usualmente Hospital Amistad Japón)
+        const mentionedCenter = contextData.centers.find(c => mock.action.includes(c.nombre)) || 
+                               obtenerTodosLosCentros().find(c => mock.action.includes(c.nombre));
+        addMessage(mock.text + '\n\n' + mock.action, 'ai', mock.urgency, getShortTime(), mentionedCenter);
       }
     } catch (error) {
       console.error('Error en sendMessage:', error);
@@ -1373,11 +1430,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userInput) { userInput.placeholder = placeholder; userInput.focus(); }
   }
 
-  function addMessage(text, sender, urgency = null, timestamp) {
+  function addMessage(text, sender, urgency = null, timestamp, actionData = null) {
     if (!chatMessages) return;
     const div = document.createElement('div');
     div.className = `message ${sender}-message`;
     const avatar = sender === 'ai' ? 'AI' : 'TÚ';
+
+    // 🚨 Resaltar visualmente la burbuja con un tono rojizo suave para urgencias ALTA
+    if (sender === 'ai' && urgency === 'ALTA') {
+      div.style.backgroundColor = 'rgba(217, 4, 41, 0.07)';
+      div.style.border = '1px solid rgba(217, 4, 41, 0.15)';
+    }
 
     let urgencyBadge = '';
     if (sender === 'ai' && urgency) {
@@ -1386,12 +1449,38 @@ document.addEventListener('DOMContentLoaded', () => {
       urgencyBadge = `<div style="background:${colors[urgency]};color:white;padding:4px 10px;border-radius:4px;font-size:0.75rem;margin-bottom:8px;display:inline-block;">${labels[urgency]}</div>`;
     }
 
+    // ── Botón de Acción (Ruta) ──
+    let actionBtn = '';
+    if (sender === 'ai' && actionData) {
+      const lat = actionData.lat || actionData.center?.lat;
+      const lng = actionData.lng || actionData.center?.lon || actionData.lon;
+      
+      if (lat && lng) {
+        const origin = appState.userLocation ? `&origin=${appState.userLocation.lat},${appState.userLocation.lng}` : '';
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${origin}`;
+        const routeLabel = actionData.route 
+          ? `Abrir Ruta (${actionData.route.durationMin} min)` 
+          : 'Abrir Ruta';
+
+        actionBtn = `
+          <div class="message-action-container" style="margin-top:12px;">
+            <a href="${url}" target="_blank" rel="noopener" class="btn-route-action" 
+               style="display:inline-flex; align-items:center; gap:8px; background:var(--primary); color:white; padding:10px 16px; border-radius:12px; text-decoration:none; font-size:0.85rem; font-weight:600; box-shadow:0 4px 12px rgba(46,125,187,0.25); transition:transform 0.2s;">
+               <span style="font-size:1.1rem;">📍</span>
+               ${routeLabel}
+               <span style="font-size:1rem; margin-left:4px;">↗</span>
+            </a>
+          </div>`;
+      }
+    }
+
     div.innerHTML = `
       <div class="message-avatar">${avatar}</div>
       <div class="message-content">
         ${urgencyBadge}
         <p>${text.replace(/\n/g, '<br>')}</p>
         ${sender === 'ai' ? '<p class="message-disclaimer">Esto es orientación informativa. Consulta a un profesional.</p>' : ''}
+        ${actionBtn}
         <span class="message-time">${timestamp}</span>
       </div>`;
     chatMessages.appendChild(div);
@@ -1875,6 +1964,7 @@ document.addEventListener('DOMContentLoaded', () => {
   //  INICIALIZACIÓN
   // ═══════════════════════════════════════════════════════════════
   initVoiceInput();
+  startLocationTracking();
 
   // ── Service Worker con detección de actualización ──
   let waitingWorker = null;
