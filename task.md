@@ -1,0 +1,11 @@
+- [x] Crear estructura en Supabase (tabla `profiles` y políticas RLS).
+- [x] Modificar `index.html`:
+  - [x] Añadir importación del script de Supabase.
+  - [x] Agregar campo "Nombre" al formulario de Login.
+- [x] Modificar `app.js`:
+  - [x] Inicializar cliente de Supabase.
+  - [x] Implementar `doRegister` con Supabase Auth.
+  - [x] Implementar `doLogin` con Supabase Auth.
+  - [x] Implementar persistencia de sesión automática.
+  - [x] Implementar `btn-logout` con Supabase Auth.
+  - [x] Eliminar lógica de `localStorage` para usuarios y sesiones.
