@@ -344,11 +344,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showTyping(show) {
     if (typingIndicator) typingIndicator.style.display = show ? 'flex' : 'none';
-    if (show) scrollToBottom();
+    if (show) scrollToLastUserMessage();
   }
 
-  function scrollToBottom() {
-    if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+  function scrollToLastUserMessage() {
+    if (!chatMessages) return;
+    const userMessages = chatMessages.querySelectorAll('.user-message');
+    if (userMessages.length > 0) {
+      const lastUserMessage = userMessages[userMessages.length - 1];
+      lastUserMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   function showExportFeedback() {
@@ -1207,7 +1212,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
         <span class="message-time">${timestamp}</span>
       </div>`;
     chatMessages.appendChild(messageDiv);
-    scrollToBottom();
+    scrollToLastUserMessage();
   }
 
   function addDrugCard(data, timestamp) {
@@ -1240,7 +1245,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
         <span class="message-time">${timestamp}</span>
       </div>`;
     chatMessages.appendChild(messageDiv);
-    scrollToBottom();
+    scrollToLastUserMessage();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1289,7 +1294,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
         <span class="message-time">${timestamp}</span>
       </div>`;
     chatMessages.appendChild(messageDiv);
-    scrollToBottom();
+    scrollToLastUserMessage();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1518,7 +1523,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
         <span class="message-time">${timestamp}</span>
       </div>`;
     chatMessages.appendChild(div);
-    scrollToBottom();
+    scrollToLastUserMessage();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1700,7 +1705,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
       </div>`;
 
     chatMessages.appendChild(div);
-    scrollToBottom();
+    scrollToLastUserMessage();
   }
 
   window.showDolorSubtypes = function(tipoIndex) {
@@ -1746,7 +1751,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
       </div>`;
 
     chatMessages.appendChild(div);
-    scrollToBottom();
+    scrollToLastUserMessage();
   };
 
   window.showDoloresMenu = showDoloresMenu;
