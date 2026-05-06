@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ═══════════════════════════════════════════════════════════════
-  //  SISTEMA DE AUTENTICACIÓN — SUPABASE
+  //  SISTEMA DE AUTENTICACIÓN — TABLA PERSONALIZADA
   // ═══════════════════════════════════════════════════════════════
   const SUPABASE_URL = 'https://fxdtisafgmtoccdzdvht.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_OjKM2CciiL39KEH-LmNH6Q_9gKikAm3';
@@ -77,41 +77,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Funciones de utilidad para Auth
   function hashPin(pin) {
-    return pin + 'SC_SECURE_#'; // Padding para cumplir con el mínimo de 6 caracteres
-  }
-
-  function slugify(text) {
-    return text.toString().toLowerCase()
-      .replace(/\s+/g, '')
-      .replace(/[^\w\-]+/g, '')
-      .replace(/\-\-+/g, '')
-      .replace(/^-+/, '')
-      .replace(/-+$/, '');
-  }
-
-  function generateEmail(name) {
-    return `${slugify(name)}@saludconecta.local`;
+    let h = 0;
+    for (let i = 0; i < pin.length; i++) {
+      h = (Math.imul(31, h) + pin.charCodeAt(i)) | 0;
+    }
+    return h.toString(36) + 'SC_SECURE'; 
   }
 
   let currentUserProfile = {};
 
   async function loadUserProfile(userId) {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
+      .from('usuarios')
+      .select('nombre_usuario, perfil')
       .eq('id', userId)
       .single();
     if (data) {
-      currentUserProfile = data;
+      currentUserProfile = data.perfil || {};
+      currentUserProfile.name = data.nombre_usuario; 
     } else if (error) {
-      console.error('Error loading profile:', error);
+      console.error('Error al cargar perfil:', error);
     }
   }
 
   async function saveUserProfileLocally(profileData) {
     currentUserProfile = { ...currentUserProfile, ...profileData };
     if (appState.currentUser) {
-      await supabase.from('profiles').update(profileData).eq('id', appState.currentUser);
+      await supabase.from('usuarios').update({ perfil: currentUserProfile }).eq('id', appState.currentUser);
     }
   }
 
@@ -124,9 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const appContent  = document.getElementById('app-content');
   const authLoading = document.getElementById('auth-loading');
 
-  async function showApp(user) {
-    appState.currentUser = user.id;
-    await loadUserProfile(user.id);
+  async function showApp(userId) {
+    appState.currentUser = userId;
+    localStorage.setItem('sc_auth_session', userId);
+    await loadUserProfile(userId);
     
     if (authScreen) authScreen.style.display = 'none';
     if (appContent) appContent.style.display = 'block';
@@ -233,22 +226,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoading(true);
     document.getElementById('login-error').style.display = 'none';
 
-    const email = generateEmail(name);
-    const password = hashPin(pin);
+    const pinHashed = hashPin(pin);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre_usuario')
+      .ilike('nombre_usuario', name)
+      .eq('pin', pinHashed)
+      .single();
 
     setLoading(false);
 
-    if (error) {
-      console.error('Login error:', error);
+    if (error || !data) {
+      console.error('Error en Login:', error);
       showAuthError('login-error', 'Nombre o PIN incorrecto. Intentá de nuevo.');
       shakePins('login-p');
     } else {
-      showApp(data.user);
+      showApp(data.id);
     }
   };
 
@@ -269,32 +263,37 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoading(true);
     document.getElementById('register-error').style.display = 'none';
 
-    const email = generateEmail(name);
-    const password = hashPin(pin);
+    // 1. Verificar si el nombre ya existe
+    const { data: userExists } = await supabase
+      .from('usuarios')
+      .select('id')
+      .ilike('nombre_usuario', name)
+      .maybeSingle();
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: name,
-          pin_hash: password
-        }
-      }
-    });
+    if (userExists) {
+      setLoading(false);
+      showAuthError('register-error', 'Este nombre de usuario ya está registrado. Por favor elige otro o inicia sesión.');
+      shakePins('reg-p');
+      return;
+    }
+
+    const pinHashed = hashPin(pin);
+
+    // 2. Insertar nuevo usuario
+    const { data, error } = await supabase
+      .from('usuarios')
+      .insert([{ nombre_usuario: name, pin: pinHashed }])
+      .select('id')
+      .single();
 
     setLoading(false);
 
     if (error) {
-      console.error('Register error:', error);
-      if (error.status === 422 || error.message.includes('already registered')) {
-         showAuthError('register-error', 'Este usuario ya está registrado. Intenta iniciar sesión.');
-      } else {
-         showAuthError('register-error', 'Error al registrar. Revisa tu conexión e intenta de nuevo.');
-      }
+      console.error('Error en Registro:', error);
+      showAuthError('register-error', 'Hubo un error al registrar. Intenta de nuevo más tarde.');
       shakePins('reg-p');
-    } else {
-      showApp(data.user);
+    } else if (data) {
+      showApp(data.id);
     }
   };
 
@@ -332,26 +331,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── Inicialización de sesión Supabase ──
+  // ── Inicialización de sesión local ──
   initAuthUI();
   
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) {
-      showApp(session.user);
-    } else {
-      if (authScreen) authScreen.style.display = 'flex';
-      if (appContent) appContent.style.display = 'none';
-    }
-  });
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (!session) {
-      if (authScreen) authScreen.style.display = 'flex';
-      if (appContent) appContent.style.display = 'none';
-      appState.currentUser = null;
-      currentUserProfile = {};
-    }
-  });
+  const savedSessionId = localStorage.getItem('sc_auth_session');
+  if (savedSessionId) {
+    showApp(savedSessionId);
+  } else {
+    if (authScreen) authScreen.style.display = 'flex';
+    if (appContent) appContent.style.display = 'none';
+  }
 
 
 
@@ -1986,7 +1975,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
       .map(id => document.getElementById(id)?.value || '').join('');
     if (newPin.length === 4) {
       const password = hashPin(newPin);
-      supabase.auth.updateUser({ password: password }).then(({ data, error }) => {
+      supabase.from('usuarios').update({ pin: password }).eq('id', appState.currentUser).then(({ data, error }) => {
         if (error) console.error("Error al actualizar PIN", error);
         else console.log("PIN actualizado correctamente");
       });
@@ -2019,7 +2008,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
 
   if (btnLogout) btnLogout.addEventListener('click', async () => {
     if (confirm('¿Cerrar sesión? Tendrás que ingresar tu PIN la próxima vez.')) {
-      await supabase.auth.signOut();
+      localStorage.removeItem('sc_auth_session');
       appState.currentUser = null;
       appState.conversationHistory = [];
       if (appContent) appContent.style.display = 'none';

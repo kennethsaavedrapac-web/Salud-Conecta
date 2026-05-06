@@ -1,66 +1,49 @@
-# Integración de Supabase Auth en Salud-Conecta IA
+# Reemplazo de Supabase Auth por Tabla de Usuarios Personalizada
 
-Este plan detalla los pasos para reemplazar completamente el sistema de autenticación local (`localStorage`) por **Supabase Auth**, manteniendo la compatibilidad con PWA y el funcionamiento offline parcial.
+El objetivo es abandonar el sistema integrado de `Supabase Auth` y utilizar directamente una tabla en la base de datos de Supabase llamada `usuarios` para gestionar los registros, inicios de sesión y la persistencia local.
 
 ## User Review Required
 
 > [!WARNING]
-> **Identificación de Usuarios tras Limpiar Caché**
-> Actualmente, los usuarios solo ingresan su **PIN de 4 dígitos** para iniciar sesión, porque el sistema busca en el `localStorage` del dispositivo. Si usamos Supabase Auth y el usuario borra la caché del navegador, un PIN de 4 dígitos (con solo 10,000 combinaciones) no es suficiente para saber **quién** es el usuario a nivel global.
-> **Propuesta:** Para mantener la cuenta segura y recuperable, agregaré un campo de **"Nombre de usuario" (o nombre completo)** al formulario de **Login**. 
-> Internamente, el sistema convertirá el Nombre de usuario en un formato de correo ficticio (ej. `[usuario]@salud-conecta.local`) y usará el PIN como contraseña para Supabase Auth. ¿Estás de acuerdo con este cambio en la interfaz de Login?
-
-> [!IMPORTANT]
-> **Requisito de Contraseña en Supabase**
-> Supabase exige que las contraseñas tengan un mínimo de 6 caracteres. Como el PIN tiene 4 dígitos, internamente se guardará combinándolo con una cadena segura (ej. `PIN + "SC"`) al comunicarse con Supabase Auth. El PIN nunca se guardará en texto plano en la base de datos pública. ¿Te parece correcto?
-
-## Open Questions
-
-- ¿Deseas que los usuarios existentes en `localStorage` (si los hay) se migren automáticamente a Supabase la primera vez que abran la aplicación, o que tengan que registrarse de nuevo obligatoriamente?
-- ¿Quieres mantener la misma pantalla de PINs separados (4 inputs), pero agregando el campo de usuario arriba en el Login?
+> Al dejar de usar `Supabase Auth`, toda la autenticación la manejaremos manualmente. Las consultas se realizarán con el rol `anon` (anónimo), por lo que debemos permitir acceso público para lectura/escritura a esta tabla específica para que la PWA funcione. Los PINs seguirán estando "hasheados" antes de guardarse para mantener la seguridad.
 
 ## Proposed Changes
 
-### Supabase Setup & Database
-Se ejecutará un script SQL usando la herramienta de migraciones para crear la estructura adicional:
-- Tabla `profiles` (conectada al ID de `auth.users`) para guardar el nombre, preferencias, y futura información médica.
-- Configurar *Row Level Security (RLS)* para que cada usuario solo pueda ver y modificar sus propios datos.
-- Trigger automático para crear el `profile` al registrarse.
+### 1. Base de Datos (Supabase)
+Ejecutaremos una migración SQL para:
+- Crear la tabla `usuarios`.
+- Columnas: `id` (UUID), `nombre_usuario` (TEXT, único), `pin` (TEXT, hasheado), `perfil` (JSONB, para guardar los datos de salud), `fecha_registro` (TIMESTAMP).
+- Configurar políticas de RLS para permitir inserciones y selecciones desde el frontend.
 
-### UI & HTML (`index.html`)
-
-#### [MODIFY] index.html
-- Actualizar `<head>` para importar el SDK de Supabase (`@supabase/supabase-js`).
-- Modificar `#form-login` para agregar un `<input>` de **Nombre de usuario**, de forma idéntica al registro.
-- Agregar elementos para mostrar "cargando" durante la conexión a Supabase (spinners) y manejar errores de conexión fallida.
-
-### Lógica de Aplicación (`app.js`)
+### 2. app.js
 
 #### [MODIFY] app.js
-- Inicializar cliente de Supabase usando `SUPABASE_URL` y la `sb_publishable_key`.
-- **Registro (`doRegister`)**:
-  - Validar nombre y PIN.
-  - Generar email interno: `nombre_slug@saludconecta.local`.
-  - Llamar a `supabase.auth.signUp()`.
-  - Manejar errores: Usuario ya existe.
-- **Login (`doLogin`)**:
-  - Leer Nombre y PIN.
-  - Llamar a `supabase.auth.signInWithPassword()`.
-  - Manejar errores: PIN incorrecto, usuario no encontrado.
-- **Verificación de Sesión**:
-  - Eliminar funciones de `localStorage` y `sessionStorage`.
-  - Usar `supabase.auth.getSession()` al inicio para auto-loguear.
-  - Suscribirse a cambios con `supabase.auth.onAuthStateChange()`.
-- **Logout (`btn-logout`)**:
-  - Llamar a `supabase.auth.signOut()` y reiniciar la UI.
-- **Manejo Offline**:
-  - Si no hay conexión al intentar login/registro, mostrar error correspondiente.
+- **Inicialización de Sesión:** Volveremos a usar `localStorage.getItem('sc_auth_session')` para saber si el usuario ya inició sesión previamente y mantener la app persistente ante borrados de caché parciales o recargas.
+- **Registro (`doRegister`):** 
+  - Consultar `supabase.from('usuarios')` para verificar si el `nombre_usuario` ya está en uso.
+  - Insertar nuevo usuario con el nombre y PIN hasheado.
+  - Guardar el ID en `localStorage`.
+- **Login (`doLogin`):** 
+  - Consultar la tabla `usuarios` buscando una coincidencia exacta de `nombre_usuario` y `pin` hasheado.
+  - Si es correcto, guardar el ID en `localStorage` y cargar la app.
+  - Si es incorrecto, mostrar error.
+- **Logout:** 
+  - Borrar el ID de `localStorage` y recargar/ocultar la interfaz principal.
+- **Actualizar Perfil / Cambiar PIN:**
+  - Enviar los datos del perfil actualizados directamente a la columna `perfil` de la tabla `usuarios`.
+  - Si se ingresa un nuevo PIN, actualizar la columna `pin` en esa misma tabla.
+- **Limpieza Total:**
+  - Eliminar todas las llamadas a `supabase.auth.*`.
 
 ## Verification Plan
 
+### Automated Tests
+- Ejecutar la migración a través de las herramientas de MCP en Supabase.
+- Validar el código de `app.js` usando `node -c app.js` para asegurar que no haya errores de sintaxis.
+
 ### Manual Verification
-1. **Registro:** Ingresar un nombre y PIN de 4 dígitos. Verificar en el dashboard de Supabase (o vía API) que se creó el usuario en Auth y en la tabla de perfiles.
-2. **Login:** Cerrar sesión y volver a entrar con el nombre y PIN.
-3. **Persistencia:** Recargar la página (F5) o cerrar el navegador; la sesión debe mantenerse iniciada automáticamente.
-4. **Limpieza de Caché:** Borrar la caché del navegador. Volver a ingresar nombre y PIN. La sesión debe recuperarse.
-5. **Errores:** Intentar registrar un usuario existente. Intentar login con PIN incorrecto.
+- Intentar registrar un usuario nuevo y verificar en el dashboard que se crea la fila en `usuarios`.
+- Intentar registrar el mismo usuario y confirmar que muestra error.
+- Iniciar sesión con un PIN incorrecto y confirmar el error.
+- Recargar la página y verificar que la sesión persiste gracias al `localStorage`.
+- Modificar datos del perfil y guardarlos; recargar y confirmar que se cargan de la nube.

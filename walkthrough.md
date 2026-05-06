@@ -1,27 +1,15 @@
-# Resumen de Integración con Supabase Auth
+# Sistema de Usuarios Directo (Tabla Personalizada)
 
-He completado con éxito la migración de tu sistema de autenticación local (`localStorage`) a **Supabase**. Ahora el inicio de sesión es persistente en la nube y seguro, sin requerir un backend externo.
+He completado la refactorización para remover el sistema *Supabase Auth* y construir tu sistema de autenticación personalizado usando directamente la tabla `usuarios` en Supabase, respetando exactamente cómo quieres manejar los nombres y el PIN de 4 dígitos.
 
-## Cambios Realizados
+## 🗄️ Cambios en Base de Datos
+- **Se creó la tabla `usuarios`** con las columnas necesarias (`id`, `nombre_usuario`, `pin`, `perfil`, `fecha_registro`).
+- **Se configuró RLS (Row Level Security)** pero se incluyeron políticas especiales para que los usuarios anónimos (ya que no existe *Auth*) puedan registrarse (insertar) y hacer login (consultar).
 
-### 1. Base de Datos en Supabase
-- Ejecuté una migración SQL en tu proyecto de Supabase (`fxdtisafgmtoccdzdvht`).
-- Se creó la tabla `profiles` vinculada directamente al sistema de `auth.users` de Supabase, lo cual prepara la estructura para almacenar historiales médicos y sincronización multi-dispositivo en el futuro.
-- Se configuraron políticas de seguridad (RLS - *Row Level Security*) para que cada usuario pueda acceder y modificar únicamente su propio perfil.
-- Se agregó un "Trigger" que crea automáticamente un registro en `profiles` en cuanto un nuevo usuario se registra.
-
-### 2. Actualización de Interfaz (index.html)
-- Se añadió el SDK de `supabase-js`.
-- Se actualizó el formulario de **Login** para incluir el campo `Nombre`. Esto soluciona el problema de perder la cuenta si el usuario borra la caché: ahora puede ingresar su nombre y PIN en cualquier momento y recuperar su sesión.
-- Se añadió un indicador visual ("Conectando...") mientras se valida con Supabase para mejorar la experiencia de usuario.
-
-### 3. Lógica de Autenticación (app.js)
-- **Eliminación Total de LocalStorage:** Se borraron todas las funciones antiguas (`hashPin` inseguro, `getUsers`, `saveUsers`, `getSession`, `setSession`, etc.) y la dependencia total a `localStorage` (excepto para configuraciones visuales como el modo oscuro y el aviso de privacidad).
-- **Nuevo Flujo de Registro:** Al registrarse con nombre y PIN, el sistema genera automáticamente un identificador de correo (ej. `marianaperez@saludconecta.local`) y protege el PIN rellenándolo para cumplir con el requisito de 6 caracteres mínimos de Supabase.
-- **Nuevo Flujo de Login:** Busca al usuario usando la información generada y valida credenciales usando `supabase.auth.signInWithPassword`.
-- **Persistencia de Sesión Automática:** Se utilizó `supabase.auth.getSession()` y `supabase.auth.onAuthStateChange()` para mantener al usuario logueado, lo que funciona perfectamente incluso tras borrar el historial parcial o refrescar la página.
-- **Logout Seguro:** El botón de "Cerrar sesión" en el perfil ahora llama a `supabase.auth.signOut()`, destruyendo el JWT en la sesión activa.
-- **Actualización de Perfil y Cambio de PIN:** Al actualizar los datos en la pantalla de perfil, estos se sincronizan a la tabla `profiles` mediante `supabase.from('profiles').update()`. Si el usuario ingresa un nuevo PIN en su perfil, se llama a `supabase.auth.updateUser` para que la contraseña de su cuenta cambie permanentemente en la nube.
-
-## Resultados
-La PWA es ahora completamente compatible con funcionamiento multidispositivo gracias a Supabase. Todos los datos sensibles (PIN y contraseñas) son gestionados por los estándares de alta seguridad de Supabase y no son guardados nunca en texto plano en la base de datos pública de perfiles.
+## ⚙️ Cambios en la App (`app.js`)
+- **Autenticación "Custom":** Al hacer "Crear cuenta", el sistema ahora consulta si el nombre ya existe en la tabla. Si no existe, lo inserta con el PIN hasheado (con mayor seguridad usando iteración matemática y un *salt*).
+- **Inicio de sesión directo:** Al intentar hacer "Login", consultamos la base de datos buscando una coincidencia exacta de `nombre_usuario` y `pin` hasheado. Si existe, devolvemos el perfil.
+- **Adiós a Supabase Auth:** Todas las dependencias a métodos como `signInWithPassword` o `signUp` han sido eliminadas por completo del código.
+- **Manejo de Perfiles Integrado:** Toda tu información (enfermedades, dirección, alergias) ahora se guarda bajo la misma tabla en la columna `perfil` usando formato JSON. Esto simplifica tu estructura de base de datos a una sola tabla de control absoluto.
+- **Persistencia de Sesión Local:** Volví a implementar un pequeño almacenamiento en `localStorage` (clave `sc_auth_session`) que guarda el ID único del usuario al loguearse. Si el usuario recarga la página, esta clave se utiliza para cargar sus datos desde la nube, logrando la persistencia sin el pesado cliente de Auth.
+- **Logout:** El botón de salir ahora simplemente destruye la clave local, desconectando el dispositivo sin involucrar al servidor central.
