@@ -3,7 +3,7 @@
 SALUD-CONECTA IA — App Principal
 ═══════════════════════════════════════════════════════════════
 📌 VERSIÓN: 7.4.2
-📌 CAMBIOS: Fix auth local fallback · Manejo de pegado de imágenes
+📌 CAMBIOS: Fix input pegado al teclado · Auth local fallback
 ══════════════════════════════════════════════════════════════
 */
 
@@ -573,36 +573,76 @@ document.addEventListener('DOMContentLoaded', () => {
   //  VISUAL VIEWPORT — MANEJO DEL TECLADO VIRTUAL
   // ═══════════════════════════════════════════════════════════════
   const chatContainer = document.querySelector('.chat-container');
-  if (chatContainer) {
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
-        const viewport = window.visualViewport;
-        const keyboardHeight = window.innerHeight - viewport.height;
+  const chatInputArea = document.querySelector('.chat-input-area');
+  
+  function handleKeyboardOpen() {
+    if (!chatContainer || !chatInputArea) return;
+    
+    // Scroll to bottom of messages
+    setTimeout(() => {
+      if (chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    }, 100);
+  }
+  
+  function handleKeyboardClose() {
+    if (!chatContainer || !chatInputArea) return;
+    chatContainer.classList.remove('keyboard-open');
+    chatContainer.style.height = '';
+  }
+
+  if (chatContainer && window.visualViewport) {
+    let lastState = null;
+    
+    window.visualViewport.addEventListener('resize', () => {
+      const viewport = window.visualViewport;
+      const keyboardHeight = window.innerHeight - viewport.height;
+      const isKeyboardOpen = keyboardHeight > 100;
+      
+      if (isKeyboardOpen && !lastState) {
+        // Keyboard opened
+        chatContainer.classList.add('keyboard-open');
+        chatContainer.style.height = `calc(${viewport.height}px - 168px)`;
+        handleKeyboardOpen();
+      } else if (!isKeyboardOpen && lastState === true) {
+        // Keyboard closed
+        handleKeyboardClose();
+      }
+      
+      lastState = isKeyboardOpen;
+    });
+    
+    // Also listen for focus events as fallback
+    if (userInput) {
+      userInput.addEventListener('focus', () => {
+        setTimeout(handleKeyboardOpen, 300);
+      });
+      userInput.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (!userInput.matches(':focus')) {
+            handleKeyboardClose();
+          }
+        }, 100);
+      });
+    }
+  } else if (chatContainer && userInput) {
+    userInput.addEventListener('focus', () => {
+      setTimeout(() => {
+        const keyboardHeight = window.innerHeight - document.documentElement.clientHeight;
         if (keyboardHeight > 100) {
           chatContainer.classList.add('keyboard-open');
-          chatContainer.style.height = `calc(${viewport.height}px - 168px)`;
-        } else {
-          chatContainer.classList.remove('keyboard-open');
-          chatContainer.style.height = '';
+          handleKeyboardOpen();
         }
-      });
-    } else {
-      if (userInput) {
-        userInput.addEventListener('focus', () => {
-          setTimeout(() => {
-            const keyboardHeight = window.innerHeight - document.documentElement.clientHeight;
-            if (keyboardHeight > 100) {
-              chatContainer.classList.add('keyboard-open');
-              chatContainer.style.height = `calc(100vh - 168px - ${keyboardHeight}px)`;
-            }
-          }, 300);
-        });
-        userInput.addEventListener('blur', () => {
-          chatContainer.classList.remove('keyboard-open');
-          chatContainer.style.height = '';
-        });
-      }
-    }
+      }, 300);
+    });
+    userInput.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (!userInput.matches(':focus')) {
+          handleKeyboardClose();
+        }
+      }, 100);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════
