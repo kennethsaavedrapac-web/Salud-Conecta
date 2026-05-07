@@ -430,14 +430,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═══════════════════════════════════════════════════════════════
   //  SINCRONIZACIÓN CON INDEXEDDB (Respaldo robusto)
   // ═══════════════════════════════════════════════════════════════
-  async function initDatabaseSync() {
+  function initDatabaseSync() {
     if (typeof saludConectaDB !== 'undefined') {
-      try {
-        await saludConectaDB.syncAllData();
+      saludConectaDB.syncAllData().then(() => {
         console.log('✅ Datos sincronizados desde IndexedDB');
-      } catch (e) {
-        console.warn('⚠️ IndexedDB no disponible, usando localStorage solo');
-      }
+      }).catch(e => {
+        console.warn('⚠️ IndexedDB no disponible:', e);
+      });
     }
   }
 
@@ -445,15 +444,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuthUI();
 
   // Sincronizar datos al iniciar (recupera datos si la cache fue borrada)
-  initDatabaseSync().then(() => {
-    const savedSessionId = localStorage.getItem('sc_auth_session');
-    if (savedSessionId) {
-      showApp(savedSessionId);
-    } else {
-      if (authScreen) authScreen.style.display = 'flex';
-      if (appContent) appContent.style.display = 'none';
-    }
-  });
+  initDatabaseSync();
+
+  const savedSessionId = localStorage.getItem('sc_auth_session');
+  if (savedSessionId) {
+    showApp(savedSessionId);
+  } else {
+    if (authScreen) authScreen.style.display = 'flex';
+    if (appContent) appContent.style.display = 'none';
+  }
 
 
 
