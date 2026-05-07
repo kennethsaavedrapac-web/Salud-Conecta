@@ -544,7 +544,7 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
   flex: 1;
   max-width: 800px;
   margin: 0 auto;
-  padding: 0.85rem;
+  padding: 0.85rem 0.85rem 0 0.85rem; /* Remove bottom padding */
   width: 100%;
   overflow: hidden;
   position: relative;
@@ -648,9 +648,10 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
 .chat-input-area {
   background: var(--surface);
   padding: 0.8rem 0.9rem;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius) var(--radius) 0 0; /* Only top radius */
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
   border: 1px solid var(--border);
+  border-bottom: none;
   margin-top: 0.5rem;
 }
 .quick-actions {
@@ -722,7 +723,7 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
 .disclaimer-banner {
   background: var(--warning-light);
   color: #7a5a00;
-  padding: 0.55rem 1rem;
+  padding: 0.55rem 1rem calc(0.55rem + env(safe-area-inset-bottom, 0px)) 1rem;
   text-align: center;
   font-size: 0.72rem; font-weight: 500;
   border-top: 1px solid rgba(243,156,18,0.15);
