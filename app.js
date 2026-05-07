@@ -190,6 +190,154 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  //  GEOLOCALIZACIÓN ROBUSTA (Fase 1)
+  // ═══════════════════════════════════════════════════════════════
+  const GEO_CONFIG = {
+    MAX_ACCURACY_METERS: 500,
+    EMERGENCY_MAX_ACCURACY: 1000,
+    RETRY_TIMEOUT: 10000
+  };
+
+  function showLocationModal() {
+    const modal = document.getElementById('location-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function hideLocationModal() {
+    const modal = document.getElementById('location-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function updateLocationStatus(message, isError = false) {
+    const statusEl = document.getElementById('location-status-text');
+    const indicator = document.getElementById('location-indicator');
+    if (statusEl) {
+      statusEl.innerHTML = message;
+    }
+    if (indicator) {
+      indicator.style.display = message ? 'inline-flex' : 'none';
+    }
+  }
+
+  function showPrecision(accuracy) {
+    const precisionEl = document.getElementById('location-precision');
+    const valueEl = document.getElementById('precision-value');
+    const indicator = document.getElementById('location-indicator');
+    const locDot = document.getElementById('location-dot');
+
+    if (indicator && locDot) {
+      indicator.style.display = 'inline-flex';
+      indicator.title = `Precisión: ±${Math.round(accuracy)}m`;
+      locDot.textContent = accuracy <= GEO_CONFIG.MAX_ACCURACY_METERS ? '📍' : '📡';
+      const locStatusText = document.getElementById('location-status-text');
+      if (locStatusText) {
+        locStatusText.textContent = `±${Math.round(accuracy)}m`;
+        locStatusText.style.color = accuracy <= GEO_CONFIG.MAX_ACCURACY_METERS
+          ? 'var(--green-dark)'
+          : accuracy <= 1000
+            ? 'var(--warning)'
+            : 'var(--danger)';
+      }
+    }
+
+    if (precisionEl && valueEl) {
+      precisionEl.style.display = 'block';
+      const meters = Math.round(accuracy);
+      valueEl.textContent = meters <= GEO_CONFIG.MAX_ACCURACY_METERS
+        ? `±${meters}m (excelente)`
+        : meters <= 1000
+          ? `±${meters}m (buena)`
+          : `±${meters}m (aproximada)`;
+      valueEl.style.color = meters <= GEO_CONFIG.MAX_ACCURACY_METERS
+        ? 'var(--green-dark)'
+        : meters <= 1000
+          ? 'var(--warning)'
+          : 'var(--danger)';
+    }
+  }
+
+  function requestLocation() {
+    if (!navigator.geolocation) {
+      updateLocationStatus('❌ Tu navegador no soporta geolocalización. Podés buscar manualmente.', true);
+      return;
+    }
+
+    updateLocationStatus('<span class="loading">Obteniendo ubicación...</span>');
+
+    const opts = {
+      enableHighAccuracy: true,
+      timeout: GEO_CONFIG.RETRY_TIMEOUT,
+      maximumAge: 0
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        appState.userLocation = {
+          lat: latitude,
+          lng: longitude,
+          accuracy,
+          timestamp: pos.timestamp
+        };
+        localStorage.setItem('sc_user_location', JSON.stringify({
+          lat: latitude,
+          lng: longitude,
+          accuracy,
+          timestamp: pos.timestamp
+        }));
+
+        showPrecision(accuracy);
+        hideLocationModal();
+
+        if (accuracy > GEO_CONFIG.MAX_ACCURACY_METERS) {
+          addMessage(`⚠️ Tu ubicación no es muy precisa (${Math.round(accuracy)}m). Para mejores recomendaciones, actives la ubicación precisa del GPS.`, 'ai', null, getShortTime());
+        } else {
+          console.log(`📍 Ubicación obtenida: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (precisión: ${Math.round(accuracy)}m)`);
+        }
+
+        startLocationTracking();
+      },
+      (err) => {
+        let msg = 'Error al obtener ubicación.';
+        if (err.code === 1) msg = '⚠️ Acceso a ubicación denegado. Permitinos en tu navegador.';
+        else if (err.code === 2) msg = '❌ No se pudo determinar ubicación.';
+        else if (err.code === 3) msg = '⏱️ Tiempo de espera agotado. Intentá de nuevo.';
+        updateLocationStatus(msg + ' <button onclick="requestLocation()" style="margin-left:10px;padding:4px 8px;background:var(--primary);color:white;border:none;border-radius:4px;cursor:pointer;">Reintentar</button>', true);
+
+        appState.userLocation = { lat: 11.9344, lng: -85.9560, fallback: true, accuracy: 0 };
+        localStorage.setItem('sc_user_location', JSON.stringify(appState.userLocation));
+      },
+      opts
+    );
+  }
+
+  function initLocationFromStorage() {
+    const saved = localStorage.getItem('sc_user_location');
+    if (saved) {
+      try {
+        const loc = JSON.parse(saved);
+        appState.userLocation = loc;
+        console.log('📍 Ubicación restaurada:', loc.lat?.toFixed(5), loc.lng?.toFixed(5));
+      } catch (e) {
+        console.warn('Error al restaurar ubicación:', e);
+      }
+    }
+  }
+
+  function checkLocationConsent() {
+    initLocationFromStorage();
+
+    const locModal = document.getElementById('location-modal');
+    const locAllowed = localStorage.getItem('sc_location_allowed');
+
+    if (locAllowed === 'true' && !appState.userLocation?.lat) {
+      requestLocation();
+    } else {
+      showLocationModal();
+    }
+  }
+
   // ── Lógica de tabs auth ──
   window.showAuthTab = function(tab) {
     document.getElementById('tab-login').classList.toggle('active', tab === 'login');
@@ -776,18 +924,84 @@ document.addEventListener('DOMContentLoaded', () => {
     aseo_personal: 'Aseo personal', consulta_farmaceutica: 'Consulta farmacéutica'
   };
 
-  // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
   //  GROQ API — VÍA PROXY BACKEND (worker.js)
   //  La API key vive en el servidor. El usuario nunca la ve ni toca.
   // ═══════════════════════════════════════════════════════════════
+   async function getNearestCenterWithRoute() {
+     const userLoc = appState.userLocation;
+     if (!userLoc?.lat) return null;
+
+     const centros = obtenerTodosLosCentros();
+     if (!centros || centros.length === 0) return null;
+
+     const centrosConDistancia = centros.map(c => ({
+       ...c,
+       distance: calcularDistancia(userLoc.lat, userLoc.lng, c.lat, c.lng)
+     })).sort((a, b) => a.distance - b.distance);
+
+     const nearest = centrosConDistancia[0];
+     const route = await getRouteData(userLoc.lat, userLoc.lng, nearest.lat, nearest.lng);
+
+     return {
+       center: nearest,
+       distance: route ? route.distanceKm : (nearest.distance / 1000).toFixed(1),
+       duration: route ? route.durationMin : null
+     };
+   }
+
    async function callGroqAPI(userMessage) {
-     // Añadir mensaje al historial
      appState.conversationHistory.push({ role: 'user', content: userMessage });
 
-     // Mantener ventana de contexto razonable
      if (appState.conversationHistory.length > MAX_HISTORY) {
        appState.conversationHistory.splice(0, 2);
      }
+
+     try {
+       const contextPayload = [];
+       const userLoc = appState.userLocation;
+
+       if (userLoc) {
+         let geoContext = `[UBICACIÓN-REAL] Usuario está en lat=${userLoc.lat?.toFixed(5)}, lng=${userLoc.lng?.toFixed(5)} (precisión: ${Math.round(userLoc.accuracy || 0)}m).`;
+
+         const nearestInfo = await getNearestCenterWithRoute();
+         if (nearestInfo) {
+           geoContext += `\n[CENTRO-MÁS-CERCANO] ${nearestInfo.center.nombre} está a ${nearestInfo.distance}km`;
+           if (nearestInfo.duration) {
+             geoContext += ` (~${nearestInfo.duration} min en coche).`;
+           }
+           geoContext += `\n[REGLA-DE-ORO] Para emergencias, SIEMPRE recomendar: Hospital Amistad Japón Nicaragua (${nearestInfo.center.nombre.includes('Amistad') ? 'ES el centro más cercano' : 'verificar distancia vs centro actual'}). Incluir botón "Llamar 128" para emergencias.`;
+         }
+
+         contextPayload.push({ role: 'system', content: geoContext });
+       }
+
+       const messages = [...contextPayload, ...appState.conversationHistory];
+
+       const response = await fetch(WORKER_URL, {
+         method:  'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body:    JSON.stringify({ messages })
+       });
+
+       if (!response.ok) {
+         const errData = await response.json().catch(() => ({}));
+         throw new Error(errData.error || `HTTP ${response.status}`);
+       }
+
+       const data = await response.json();
+       const assistantMessage = data.response;
+
+       appState.conversationHistory.push({ role: 'assistant', content: assistantMessage });
+
+       return assistantMessage;
+
+     } catch (error) {
+       console.error('Worker error:', error);
+       appState.conversationHistory.pop();
+       return null;
+     }
+   }
 
      try {
        // Inyectar contexto de ubicación en tiempo real para la "Regla de Oro"
@@ -1008,15 +1222,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function searchHealthFacilities(lat, lng, radius = 10000) {
+    // Intentar obtener desde caché primero (offline)
+    if (typeof saludConectaDB !== 'undefined') {
+      const cached = await saludConectaDB.getAppData('nearby_centers');
+      if (cached && cached.location && cached.timestamp > Date.now() - 3600000) {
+        const cachedDist = calcularDistancia(lat, lng, cached.location.lat, cached.location.lng);
+        if (cachedDist < 500) {
+          console.log('📍 Usando centros en caché (menos de 1km diff)');
+          return cached.centers.map(c => ({ ...c, distance: calcularDistancia(lat, lng, c.lat, c.lng) }))
+            .filter(c => c.distance <= radius)
+            .sort((a, b) => a.distance - b.distance);
+        }
+      }
+    }
+
     const centrosBD = obtenerTodosLosCentros();
     if (centrosBD.length > 0) {
-      // CORRECCIÓN BUG: Propiedad 'distance' consistente (era 'distancia' en el sort)
-      return centrosBD.map(centro => ({
+      const results = centrosBD.map(centro => ({
         ...centro,
         distance: calcularDistancia(lat, lng, centro.lat, centro.lng)
       }))
       .filter(c => c.distance <= radius)
       .sort((a, b) => a.distance - b.distance);
+
+      // Guardar en caché si hay resultados
+      if (results.length > 0 && typeof saludConectaDB !== 'undefined') {
+        saludConectaDB.setAppData('nearby_centers', {
+          centers: results,
+          location: { lat, lng },
+          timestamp: Date.now()
+        }).catch(() => {});
+      }
+
+      return results;
     }
     // Fallback Overpass API
     const query = `[out:json][timeout:25];(node["amenity"~"hospital|clinic|pharmacy|doctors"](around:${radius},${lat},${lng});way["amenity"~"hospital|clinic|pharmacy|doctors"](around:${radius},${lat},${lng}););out center;`;
@@ -1539,6 +1777,45 @@ function displayHealthFacilities(facilities, userLat, userLng) {
     if (btnSend) btnSend.disabled = true;
 
     const lowerText = text.toLowerCase();
+    const urgency = detectUrgency(lowerText);
+
+    // ═══════════════════════════════════════════════════════════════
+    //  DETECCIÓN DE EMERGENCIA — mostrar centro más cercano inmediatamente
+    // ═══════════════════════════════════════════════════════════════
+    if (urgency === 'HIGH') {
+      const userLoc = appState.userLocation;
+      if (userLoc?.lat) {
+        const nearestInfo = await getNearestCenterWithRoute();
+        if (nearestInfo?.center) {
+          const c = nearestInfo.center;
+          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}&origin=${userLoc.lat},${userLoc.lng}`;
+
+          const emergencyCard = document.createElement('div');
+          emergencyCard.className = 'message ai-message';
+          emergencyCard.innerHTML = `
+            <div class="message-avatar">
+              <img src="icon-96-v14.png" alt="AI" onerror="this.textContent='AI';this.style.fontSize='0.6rem'">
+            </div>
+            <div class="message-content">
+              <p style="color: var(--danger); font-weight: bold; font-size: 1.1em;">🚨 URGENCIA — Busca atención inmediata</p>
+              <p>El centro más cercano a tu ubicación actual:</p>
+              <div style="background: #fff5f5; border: 2px solid var(--danger); border-radius: 12px; padding: 12px; margin: 10px 0;">
+                <strong>🏥 ${c.nombre}</strong><br>
+                <span style="color: var(--text-sec);">📍 ${c.direccion || 'Dirección no disponible'}</span><br>
+                <span style="color: var(--primary);">📞 ${c.telefono || 'Sin teléfono'}</span><br>
+                <span style="color: var(--green-dark);">📏 ${nearestInfo.distance}km${nearestInfo.duration ? ` (${nearestInfo.duration} min)` : ''}</span>
+              </div>
+              <a href="tel:128" class="btn-emergency-call" style="display: inline-block; margin: 5px 5px 5px 0;">📞 Llamar 128</a>
+              <a href="${mapsUrl}" target="_blank" class="btn-secondary" style="display: inline-block; margin: 5px 0; background: var(--primary); color: white;">🗺️ Cómo llegar</a>
+            </div>
+          `;
+          if (chatMessages) {
+            chatMessages.appendChild(emergencyCard);
+            scrollToLastUserMessage();
+          }
+        }
+      }
+    }
 
     try {
       showTyping(true);
@@ -2215,6 +2492,26 @@ function displayHealthFacilities(facilities, userLat, userLng) {
     localStorage.setItem('sc_consent', 'true');
     if (privacyModal) privacyModal.style.display = 'none';
     if (appContent)   appContent.style.display   = 'block';
+    checkLocationConsent();
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  MODAL DE GEOLOCALIZACIÓN (post-login)
+  // ═══════════════════════════════════════════════════════════════
+  const locationModal       = document.getElementById('location-modal');
+  const btnEnableLocation  = document.getElementById('btn-enable-location');
+  const btnSkipLocation    = document.getElementById('btn-skip-location');
+
+  if (btnEnableLocation) btnEnableLocation.addEventListener('click', () => {
+    localStorage.setItem('sc_location_allowed', 'true');
+    requestLocation();
+  });
+
+  if (btnSkipLocation) btnSkipLocation.addEventListener('click', () => {
+    localStorage.setItem('sc_location_allowed', 'false');
+    appState.userLocation = { lat: 11.9344, lng: -85.9560, fallback: true, accuracy: 0 };
+    hideLocationModal();
+    addMessage('Entendido. Usaré una ubicación aproximada de Granada. Podés activar la ubicación real cuando quieras desde el mapa.', 'ai', null, getShortTime());
   });
 
   // ═══════════════════════════════════════════════════════════════
