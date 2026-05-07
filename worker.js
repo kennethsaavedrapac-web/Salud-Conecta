@@ -2,17 +2,16 @@
 ═══════════════════════════════════════════════════════════════
 SALUD-CONECTA IA — Cloudflare Worker (Backend Proxy)
 ═══════════════════════════════════════════════════════════════
-IA: Groq (Llama 3.3 70B) — Gratis, sin restricciones por país
-14,400 peticiones/día gratis · Funciona en Nicaragua
+IA: Google Gemini (gemini-2.5-flash)
 
 DESPLIEGUE:
-  1. wrangler secret put GROQ_API_KEY      ← pegar gsk_...
-  2. wrangler secret put ALLOWED_ORIGIN    ← URL de GitHub Pages
+  1. wrangler secret put GEMINI_API_KEY      ← pegar AIzaSy...
+  2. wrangler secret put ALLOWED_ORIGIN      ← URL de GitHub Pages
   3. wrangler deploy
 ═══════════════════════════════════════════════════════════════
 */
 
-const GROQ_MODEL     = 'llama-3.3-70b-versatile';
+const GEMINI_MODEL   = 'gemini-2.5-flash';
 const MAX_TOKENS     = 2000;
 const RATE_LIMIT_RPM = 20;
 const RATE_LIMIT_RPH = 200;
@@ -96,7 +95,7 @@ export default {
       return jsonError('El campo "messages" es requerido', 400);
     }
 
-    // Sanitizar — Groq usa el mismo formato que OpenAI (role: user/assistant)
+    // Sanitizar mensajes
     const sanitized = messages
       .filter(m => ['user', 'assistant'].includes(m.role) && typeof m.content === 'string')
       .map(m => ({ role: m.role, content: m.content.slice(0, 10000) }))
@@ -106,33 +105,37 @@ export default {
       return jsonError('El último mensaje debe ser del usuario', 400);
     }
 
-    if (!env.GROQ_API_KEY) {
-      console.error('GROQ_API_KEY no configurada');
+    if (!env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY no configurada');
       return jsonError('Servicio no disponible. Contacta al administrador.', 503);
     }
 
-    // Llamar a Groq (API compatible con OpenAI)
+    // Llamar a Gemini API
     try {
-      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      // Convertir al formato de Gemini (role: user/model, parts)
+      const geminiContents = sanitized.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${env.GROQ_API_KEY}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model:       GROQ_MODEL,
-          max_tokens:  MAX_TOKENS,
-          temperature: 0.4,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...sanitized
-          ]
+          system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT }]
+          },
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: MAX_TOKENS
+          }
         })
       });
 
       if (!resp.ok) {
         const txt = await resp.text();
-        console.error('Groq error:', resp.status, txt);
+        console.error('Gemini error:', resp.status, txt);
         const msg = resp.status === 429
           ? 'El servicio de IA está temporalmente ocupado. Intenta en unos segundos.'
           : 'Error al consultar el servicio de IA. Intenta de nuevo.';
@@ -140,7 +143,7 @@ export default {
       }
 
       const data = await resp.json();
-      let text = data.choices?.[0]?.message?.content || '';
+      let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       // Post-procesamiento: corregir alucinaciones del LLM (última línea de defensa)
       text = text.replace(/Hospital\s+Virgen\s+de\s+la\s+Asistencia/gi, "Hospital Amistad Japón Nicaragua");

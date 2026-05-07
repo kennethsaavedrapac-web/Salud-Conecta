@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 # Variables públicas (no sensibles). Las sensibles van como secrets:
-#   wrangler secret put GROQ_API_KEY
+#   wrangler secret put GEMINI_API_KEY
 #   wrangler secret put ALLOWED_ORIGIN
 APP_NAME = "Salud-Conecta IA"
-APP_VERSION = "7.4.0"
+APP_VERSION = "8.0.0"

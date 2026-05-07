@@ -2,8 +2,8 @@
 ═══════════════════════════════════════════════════════════════
 SALUD-CONECTA IA — App Principal
 ═══════════════════════════════════════════════════════════════
-📌 VERSIÓN: 7.4.0
-📌 CAMBIOS: Maintenance Update · Database Clean up
+📌 VERSIÓN: 8.0.0
+📌 CAMBIOS: Migración completa de Groq API → Google Gemini API (gemini-2.5-flash)
 ═══════════════════════════════════════════════════════════════
 */
 
@@ -44,9 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
   updateOfflineStatus();
 
   // ═══════════════════════════════════════════════════════════════
-  //  CONFIGURACIÓN DEL PROXY BACKEND
+  //  CONFIGURACIÓN DE GEMINI API (Google AI)
   // ═══════════════════════════════════════════════════════════════
-  const WORKER_URL = 'https://salud-conecta-api.salud-conecta.workers.dev/chat'; // Production Worker URL
+  const GEMINI_API_KEY = 'AIzaSyDMyJt6pTMMOYC5kB40uOX147C2Z7UlUU0';
+  const GEMINI_MODEL   = 'gemini-2.5-flash';
+  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   const MAX_HISTORY = 20;
 
   // ═══════════════════════════════════════════════════════════════
@@ -624,60 +626,128 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ═══════════════════════════════════════════════════════════════
-  //  GROQ API — VÍA PROXY BACKEND (worker.js)
-  //  La API key vive en el servidor. El usuario nunca la ve ni toca.
+  //  GEMINI API — Google AI (gemini-2.5-flash)
+  //  Llamada directa a la REST API de Google Generative AI.
   // ═══════════════════════════════════════════════════════════════
-   async function callGroqAPI(userMessage) {
-     // Añadir mensaje al historial
-     appState.conversationHistory.push({ role: 'user', content: userMessage });
+  const SYSTEM_PROMPT = `Eres SaludConecta AI, asistente de orientación de salud preventiva para Granada, Nicaragua. No eres médico ni reemplazas la consulta médica profesional.
 
-     // Mantener ventana de contexto razonable
-     if (appState.conversationHistory.length > MAX_HISTORY) {
-       appState.conversationHistory.splice(0, 2);
-     }
+════════════════════════════════════════
+⚠️ REGLA ABSOLUTA — OBLIGATORIA EN CADA RESPUESTA:
+El ÚNICO hospital que puedes recomendar en casos urgentes o moderados es:
+  ✅ Hospital Amistad Japón Nicaragua (tel. 2552-7050, urgencias gratuitas 24h)
+El ÚNICO número de emergencia que puedes mencionar es:
+  ✅ 128
+PROHIBIDO mencionar: "Hospital Virgen de la Asistencia", "Carlos Roberto Huembes",
+"Clínica Familiar", ni el número "133". Esos no existen en Granada, Nicaragua.
+Mencionarlos sería información falsa y peligrosa para el usuario.
+════════════════════════════════════════
 
-     try {
-       // Inyectar contexto de ubicación en tiempo real para la "Regla de Oro"
-       const contextPayload = [];
-       const userLoc = appState.userLocation;
+RECURSOS LOCALES EN GRANADA (SILAIS/MINSA):
+• Emergencias nacionales: 128 (Bomberos/SILAIS - gratuito, 24h)
+• Cruz Roja Granada: 2552-5555
+• Hospital Amistad Japón Nicaragua: 2552-7050 — Hospital Departamental público principal (24h, urgencias gratuitas)
+• Hospital SERMESA Granada: 2552-4444 — Hospital privado (Atención INSS y particular, 24h)
+• C.S. Jorge Sinforoso Bravo: 2552-0600 — Centro de Salud principal (Frente Parque Sandino)
+• C.S. Pedro José Chamorro: 2552-0550 — Barrio Calle Palmira
+• Farmacia Del Pueblo: 2552-5000 — 24 horas, Parque Central
 
-       if (userLoc) {
-         const locationContext = {
-           role: 'system',
-           content: `[CONTEXTO-GEO-EN-TIEMPO-REAL] Usuario está en lat=${userLoc.lat?.toFixed(5)}, lng=${userLoc.lng?.toFixed(5)} (precisión: ${Math.round(userLoc.accuracy || 0)}m). Usa datos reales de ruta 'route' cuando existan para priorizar Hospital Amistad Japón Nicaragua y recomendar el centro más cercano.`
-         };
-         contextPayload.push(locationContext);
-       }
+INSTRUCCIONES:
+1. Responde SIEMPRE en español sencillo y empático (como un familiar de confianza).
+2. Comienza SIEMPRE con el nivel de urgencia:
+   🔴 URGENCIA ALTA — Ir a urgencias o llamar al 128 de inmediato.
+   🟡 URGENCIA MEDIA — Consultar médico en las próximas 24-48 horas.
+   🟢 URGENCIA BAJA — Manejo en casa con vigilancia de síntomas.
+3. Para ALTA: Di EXACTAMENTE "Llama al 128 o acude al Hospital Amistad Japón Nicaragua (urgencias gratuitas, 24h)."
+   USA LOS DATOS DE RUTA: Si el contexto incluye 'route', informa al usuario: "Estás a aproximadamente X km y te tomará Y minutos llegar por calle."
+   No menciones ningún otro hospital ni número de emergencia.
+4. Para MEDIA: Di EXACTAMENTE "Te recomendamos visitar el Hospital Amistad Japón Nicaragua, o puedes visitar tu centro de salud más cercano, míralo en el mapa." No menciones ningún otro hospital.
+5. Para BAJA: Proporciona 4-6 consejos de autocuidado seguros, claros y útiles.
+6. Tu prioridad es explicar y ampliar la información del CONTEXTO LOCAL Y GEOGRÁFICO. Si el usuario está cerca de un centro, menciónalo por su nombre y dile cuánto tiempo tardará en llegar basándote en el campo 'durationMin'.
+7. Reconoce siempre que los datos provienen de la "Base de Datos de Salud de Granada" integrada en SaludConecta AI.
+8. Si el usuario pregunta por opciones (ej: "qué farmacias hay"), menciona TODAS las que aparezcan en el CONTEXTO LOCAL, no solo una.
+9. NUNCA proporciones diagnósticos médicos definitivos.
+10. Si hay información en el CONTEXTO LOCAL sobre dosis, cítala textualmente como referencia informativa, aclarando que no reemplaza la indicación de un médico o farmacéutico.
+11. Usa un tono preventivo y orientador.
+12. Termina SIEMPRE con: "⚕️ Esto es orientación informativa. Consulta con un profesional de salud."`.trim();
 
-       // Preparar mensajes: contexto + historial
-       const messages = [...contextPayload, ...appState.conversationHistory];
+  /**
+   * Post-procesamiento anti-alucinaciones del LLM.
+   * Última línea de defensa contra hospitales y números de emergencia incorrectos.
+   */
+  function sanitizeAIResponse(text) {
+    text = text.replace(/Hospital\s+Virgen\s+de\s+la\s+Asistencia/gi, 'Hospital Amistad Japón Nicaragua');
+    text = text.replace(/Virgen\s+de\s+la\s+Asistencia/gi, 'Hospital Amistad Japón Nicaragua');
+    text = text.replace(/Cl[ií]nica\s+Familiar/gi, 'centro de salud más cercano');
+    text = text.replace(/Carlos\s+Roberto\s+Huembes/gi, 'Hospital Amistad Japón Nicaragua');
+    text = text.replace(/Huembes/gi, 'Hospital Amistad Japón Nicaragua');
+    text = text.replace(/\b133\b/g, '128');
+    text = text.replace(/al\s+133/gi, 'al 128');
+    text = text.replace(/llamar\s+al\s+1[23][23]/gi, 'llamar al 128');
+    return text;
+  }
 
-       const response = await fetch(WORKER_URL, {
-         method:  'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body:    JSON.stringify({ messages })
-       });
+  async function callGeminiAPI(userMessage) {
+    // Añadir mensaje al historial
+    appState.conversationHistory.push({ role: 'user', content: userMessage });
 
-       if (!response.ok) {
-         const errData = await response.json().catch(() => ({}));
-         throw new Error(errData.error || `HTTP ${response.status}`);
-       }
+    // Mantener ventana de contexto razonable
+    if (appState.conversationHistory.length > MAX_HISTORY) {
+      appState.conversationHistory.splice(0, 2);
+    }
 
-       const data = await response.json();
-       const assistantMessage = data.response;
+    try {
+      // Inyectar contexto de ubicación en tiempo real
+      let geoContext = '';
+      const userLoc = appState.userLocation;
+      if (userLoc) {
+        geoContext = `\n[CONTEXTO-GEO-EN-TIEMPO-REAL] Usuario está en lat=${userLoc.lat?.toFixed(5)}, lng=${userLoc.lng?.toFixed(5)} (precisión: ${Math.round(userLoc.accuracy || 0)}m). Usa datos reales de ruta 'route' cuando existan para priorizar Hospital Amistad Japón Nicaragua y recomendar el centro más cercano.`;
+      }
 
-       // Guardar respuesta en historial
-       appState.conversationHistory.push({ role: 'assistant', content: assistantMessage });
+      // Construir el historial en formato Gemini (role: user/model, parts)
+      const geminiContents = appState.conversationHistory.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
 
-       return assistantMessage;
+      const response = await fetch(GEMINI_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT + geoContext }]
+          },
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 2000
+          }
+        })
+      });
 
-     } catch (error) {
-       console.error('Worker error:', error);
-       // Revertir mensaje del usuario del historial
-       appState.conversationHistory.pop();
-       return null;
-     }
-   }
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('Gemini API error:', response.status, errData);
+        throw new Error(errData.error?.message || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      let assistantMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      // Post-procesamiento anti-alucinaciones
+      assistantMessage = sanitizeAIResponse(assistantMessage);
+
+      // Guardar respuesta en historial
+      appState.conversationHistory.push({ role: 'assistant', content: assistantMessage });
+
+      return assistantMessage;
+
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      // Revertir mensaje del usuario del historial
+      appState.conversationHistory.pop();
+      return null;
+    }
+  }
 
   function detectUrgencyFromResponse(responseText) {
     if (responseText.includes('🔴') || responseText.includes('URGENCIA ALTA')) return 'ALTA';
@@ -1476,7 +1546,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
         : text;
 
       // Si el worker falla (sin internet, no desplegado), usa respuestas básicas automáticamente
-      const response = await callGroqAPI(textWithContext);
+      const response = await callGeminiAPI(textWithContext);
       if (response) {
         const urgency = detectUrgencyFromResponse(response);
 

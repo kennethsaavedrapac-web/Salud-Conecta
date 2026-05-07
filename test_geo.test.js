@@ -52,7 +52,7 @@ test('Centro más cercano tiene icono naranja y distancía real', async () => {
   app.displayHealthFacilities(facilities, 11.9344, -85.9560);
   
   // Verificar que el primer marcador tenga icono naranja
-  const marker1 = app.appState healthMarkers[0] // Ajustar a la realidad
+  const marker1 = app.appState.healthMarkers[0]; // Ajustar a la realidad
   expect(marker1.getIcon().html).toContain('#ff9800');
   
   // Verificar que se muestre la distancia real en km
@@ -71,6 +71,6 @@ test('IA recibe contexto de ubicación', async () => {
   const response = await app.sendMessage('Necesito ayuda');
   
   // Verificar que en el contexto haya referenciá a la ubicación
-  // Esto dependería de la implementación en `callGroqAPI`
+  // Esto dependería de la implementación en `callGeminiAPI`
   // Ajustar según el código real
 });

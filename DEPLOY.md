@@ -1,22 +1,37 @@
-# Guía de despliegue — Salud-Conecta IA v7.4.0
+# Guía de despliegue — Salud-Conecta IA v8.0.0
 
 ## Arquitectura
 
 ```
-Usuario (Granada) → GitHub Pages (frontend) → Cloudflare Worker (backend) → Groq API
+Usuario (Granada) → GitHub Pages (frontend) → Google Gemini API (gemini-2.5-flash)
 ```
 
-La API key de Groq vive únicamente en el Worker de Cloudflare.
-El usuario final nunca la ve ni la necesita.
+La API key de Gemini se configura directamente en el frontend (`app.js`).
+Opcionalmente, puede usarse el Cloudflare Worker como proxy para mayor seguridad.
 
 ---
 
-## Paso 1 — Desplegar el Worker en Cloudflare (una sola vez)
+## Opción A — Llamada directa desde frontend (actual)
+
+La API key está configurada en `app.js` como constante `GEMINI_API_KEY`.
+No se necesita backend. Solo publicar en GitHub Pages.
+
+### Publicar en GitHub Pages
+
+```bash
+git add .
+git commit -m "v8.0.0: migración a Gemini API"
+git push origin main
+```
+
+---
+
+## Opción B — Worker como proxy (más seguro, opcional)
 
 ### Requisitos
 - Cuenta gratuita en cloudflare.com
 - Node.js instalado
-- La API key de Groq (gsk-...)
+- La API key de Gemini (AIzaSy...)
 
 ### Comandos
 
@@ -31,8 +46,8 @@ wrangler login
 cd salud-conecta
 
 # Guardar la API key como Secret (seguro, nunca en código)
-wrangler secret put GROQ_API_KEY
-# → te pedirá pegar la clave: gsk-...
+wrangler secret put GEMINI_API_KEY
+# → te pedirá pegar la clave: AIzaSy...
 
 # Guardar el origen permitido (URL de tu GitHub Pages)
 wrangler secret put ALLOWED_ORIGIN
@@ -46,32 +61,6 @@ Al finalizar, Wrangler muestra la URL del worker:
 ```
 https://salud-conecta-api.TU-USUARIO.workers.dev
 ```
-
----
-
-## Paso 2 — Conectar el frontend con el Worker
-
-Abrir `app.js` y actualizar la línea 32:
-
-```javascript
-// ANTES (placeholder)
-const WORKER_URL = 'https://salud-conecta-api.TU-USUARIO.workers.dev/chat';
-
-// DESPUÉS (con tu URL real)
-const WORKER_URL = 'https://salud-conecta-api.jp-romero.workers.dev/chat';
-```
-
----
-
-## Paso 3 — Publicar el frontend en GitHub Pages
-
-```bash
-git add .
-git commit -m "v6.0.0: backend proxy, voz, bugs corregidos"
-git push origin main
-```
-
-GitHub Pages publicará automáticamente desde la rama `main`.
 
 ---
 
@@ -90,25 +79,19 @@ Para una app comunitaria de Granada, 100,000 peticiones/día es más que suficie
 
 ## Actualizar la API key en el futuro
 
+### Si usas llamada directa (Opción A):
+Editar la constante `GEMINI_API_KEY` en `app.js`.
+
+### Si usas Worker (Opción B):
 ```bash
-wrangler secret put GROQ_API_KEY
+wrangler secret put GEMINI_API_KEY
 # → pegar la nueva clave
 wrangler deploy
 ```
 
-No es necesario tocar el frontend.
-
 ---
 
-## Verificar que el Worker funciona
+## Verificar que funciona
 
-```bash
-curl -X POST https://salud-conecta-api.TU-USUARIO.workers.dev/chat \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"Hola, tengo fiebre"}]}'
-```
-
-Debe devolver:
-```json
-{"response":"🟡 URGENCIA MEDIA — ..."}
-```
+Abrir la app en el navegador y enviar un mensaje de prueba en el chat.
+La respuesta debe venir del modelo Gemini con el formato de urgencia (🔴/🟡/🟢).
