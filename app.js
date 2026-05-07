@@ -69,68 +69,83 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ═══════════════════════════════════════════════════════════════
-  //  SISTEMA DE AUTENTICACIÓN — PIN LOCAL
+  //  SISTEMA DE AUTENTICACIÓN — TABLA PERSONALIZADA
   // ═══════════════════════════════════════════════════════════════
+  const SUPABASE_URL = 'https://fxdtisafgmtoccdzdvht.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_OjKM2CciiL39KEH-LmNH6Q_9gKikAm3';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Helpers de storage para usuarios
+  // Funciones de utilidad para Auth
   function hashPin(pin) {
-    // Hash simple para no guardar el PIN en texto plano
     let h = 0;
     for (let i = 0; i < pin.length; i++) {
       h = (Math.imul(31, h) + pin.charCodeAt(i)) | 0;
     }
-    return h.toString(36);
+    return h.toString(36) + 'SC_SECURE'; 
   }
 
-  function getUsers() {
-    return JSON.parse(localStorage.getItem('sc_users') || '{}');
+  let currentUserProfile = {};
+
+  async function loadUserProfile(userId) {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('nombre_usuario, perfil')
+      .eq('id', userId)
+      .single();
+    if (data) {
+      currentUserProfile = data.perfil || {};
+      currentUserProfile.name = data.nombre_usuario; 
+    } else if (error) {
+      console.error('Error al cargar perfil:', error);
+    }
   }
 
-  function saveUsers(users) {
-    localStorage.setItem('sc_users', JSON.stringify(users));
+  async function saveUserProfileLocally(profileData) {
+    currentUserProfile = { ...currentUserProfile, ...profileData };
+    if (appState.currentUser) {
+      await supabase.from('usuarios').update({ perfil: currentUserProfile }).eq('id', appState.currentUser);
+    }
   }
 
-  function getUserProfile(userId) {
-    const profiles = JSON.parse(localStorage.getItem('sc_profiles') || '{}');
-    return profiles[userId] || {};
-  }
-
-  function saveUserProfile(userId, profile) {
-    const profiles = JSON.parse(localStorage.getItem('sc_profiles') || '{}');
-    profiles[userId] = { ...profiles[userId], ...profile, updatedAt: new Date().toISOString() };
-    localStorage.setItem('sc_profiles', JSON.stringify(profiles));
-  }
-
-  function getSession() {
-    try {
-      const s = sessionStorage.getItem('sc_session');
-      return s ? JSON.parse(s) : null;
-    } catch { return null; }
-  }
-
-  function setSession(userId) {
-    sessionStorage.setItem('sc_session', JSON.stringify({ userId, loginAt: Date.now() }));
-  }
-
-  function clearSession() {
-    sessionStorage.removeItem('sc_session');
+  function getUserProfile() {
+    return currentUserProfile;
   }
 
   // ── Auth UI helpers ──
   const authScreen  = document.getElementById('auth-screen');
   const appContent  = document.getElementById('app-content');
+  const authLoading = document.getElementById('auth-loading');
 
-  function showApp(userId) {
+  async function showApp(userId) {
     appState.currentUser = userId;
-    setSession(userId);
+    localStorage.setItem('sc_auth_session', userId);
+    await loadUserProfile(userId);
+    
     if (authScreen) authScreen.style.display = 'none';
     if (appContent) appContent.style.display = 'block';
+
+    // Resetear vistas: asegurar que solo el chat esté visible inicialmente
+    const pContainer = document.getElementById('profile-container');
+    if (pContainer) pContainer.style.display = 'none';
+    const mContainer = document.getElementById('map-container');
+    if (mContainer) mContainer.style.display = 'none';
+    const rfContainer = document.getElementById('report-form-container');
+    if (rfContainer) rfContainer.style.display = 'none';
+    const rlContainer = document.getElementById('reports-list-container');
+    if (rlContainer) rlContainer.style.display = 'none';
+    
+    const chatMsg = document.getElementById('chat-messages');
+    if (chatMsg && chatMsg.parentElement) {
+      chatMsg.parentElement.style.display = 'flex';
+    }
+
     updateHeaderUser();
     personalizeWelcome();
+    checkPrivacyConsent();
   }
 
   function updateHeaderUser() {
-    const profile = getUserProfile(appState.currentUser);
+    const profile = getUserProfile();
     const name = profile.name || 'Usuario';
     const initial = name.charAt(0).toUpperCase();
     const shortName = name.split(' ')[0];
@@ -141,29 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function personalizeWelcome() {
-    const profile = getUserProfile(appState.currentUser);
+    const profile = getUserProfile();
     const el = document.getElementById('welcome-msg');
     if (!el) return;
     const hour = new Date().getHours();
     const greeting = hour < 12 ? '¡Buenos días' : hour < 19 ? '¡Buenas tardes' : '¡Buenas noches';
     const name = profile.name ? `, ${profile.name.split(' ')[0]}` : '';
     el.textContent = `${greeting}${name}! Soy tu asistente de salud en Granada. ¿Cómo te sentís hoy?`;
-  }
-
-  // ── Inicialización: verificar sesión activa ──
-  const existingSession = getSession();
-  const users = getUsers();
-
-  if (existingSession && users[existingSession.userId]) {
-    // Sesión activa — ir directo a la app
-    if (authScreen) authScreen.style.display = 'none';
-    checkPrivacyConsent();
-    showApp(existingSession.userId);
-  } else {
-    // Mostrar pantalla de auth
-    if (authScreen) authScreen.style.display = 'flex';
-    if (appContent) appContent.style.display = 'none';
-    initAuthUI();
   }
 
   function checkPrivacyConsent() {
@@ -185,6 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('form-login').style.display    = tab === 'login'    ? 'flex' : 'none';
     document.getElementById('form-register').style.display = tab === 'register' ? 'flex' : 'none';
     clearPins();
+    const loginErr = document.getElementById('login-error');
+    const regErr = document.getElementById('register-error');
+    if (loginErr) loginErr.style.display = 'none';
+    if (regErr) regErr.style.display = 'none';
   };
 
   function clearPins() {
@@ -194,59 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el) { el.value = ''; el.classList.remove('filled'); }
     });
   }
-
-  // ── Login ──
-  window.doLogin = function() {
-    const pin = getPinValue('login-p');
-    if (pin.length !== 4) {
-      showAuthError('login-error', 'Ingresá los 4 dígitos de tu PIN.');
-      return;
-    }
-    const users = getUsers();
-    const userId = Object.keys(users).find(id => users[id].pinHash === hashPin(pin));
-    if (!userId) {
-      showAuthError('login-error', 'PIN incorrecto. Intentá de nuevo.');
-      shakePins('login-p');
-      return;
-    }
-    document.getElementById('login-error').style.display = 'none';
-    showApp(userId);
-    checkPrivacyConsent();
-  };
-
-  // ── Registro ──
-  window.doRegister = function() {
-    const name = document.getElementById('reg-name')?.value.trim();
-    const pin  = getPinValue('reg-p');
-
-    if (!name) {
-      showAuthError('register-error', 'Escribí tu nombre para continuar.');
-      return;
-    }
-    if (pin.length !== 4) {
-      showAuthError('register-error', 'Elegí un PIN de 4 dígitos.');
-      return;
-    }
-
-    const users   = getUsers();
-    const pinHashed = hashPin(pin);
-    const existingUser = Object.keys(users).find(id => users[id].pinHash === pinHashed);
-
-    if (existingUser) {
-      showAuthError('register-error', 'Ese PIN ya está en uso en este dispositivo. Por favor, elige otro.');
-      shakePins('reg-p');
-      return;
-    }
-
-    const userId  = 'user_' + Date.now();
-    users[userId] = { pinHash: pinHashed, createdAt: new Date().toISOString() };
-    saveUsers(users);
-    saveUserProfile(userId, { name });
-
-    document.getElementById('register-error').style.display = 'none';
-    showApp(userId);
-    checkPrivacyConsent();
-  };
 
   function getPinValue(prefix) {
     return ['1','2','3','4']
@@ -269,6 +219,100 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function setLoading(isLoading) {
+    if (authLoading) authLoading.style.display = isLoading ? 'block' : 'none';
+    const btns = document.querySelectorAll('.btn-auth');
+    btns.forEach(btn => btn.disabled = isLoading);
+  }
+
+  // ── Login ──
+  window.doLogin = async function() {
+    const name = document.getElementById('login-name')?.value.trim();
+    const pin = getPinValue('login-p');
+    
+    if (!name) {
+      showAuthError('login-error', 'Escribí tu nombre para continuar.');
+      return;
+    }
+    if (pin.length !== 4) {
+      showAuthError('login-error', 'Ingresá los 4 dígitos de tu PIN.');
+      return;
+    }
+
+    setLoading(true);
+    document.getElementById('login-error').style.display = 'none';
+
+    const pinHashed = hashPin(pin);
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre_usuario')
+      .ilike('nombre_usuario', name)
+      .eq('pin', pinHashed)
+      .single();
+
+    setLoading(false);
+
+    if (error || !data) {
+      console.error('Error en Login:', error);
+      showAuthError('login-error', 'Nombre o PIN incorrecto. Intentá de nuevo.');
+      shakePins('login-p');
+    } else {
+      showApp(data.id);
+    }
+  };
+
+  // ── Registro ──
+  window.doRegister = async function() {
+    const name = document.getElementById('reg-name')?.value.trim();
+    const pin  = getPinValue('reg-p');
+
+    if (!name) {
+      showAuthError('register-error', 'Escribí tu nombre para continuar.');
+      return;
+    }
+    if (pin.length !== 4) {
+      showAuthError('register-error', 'Elegí un PIN de 4 dígitos.');
+      return;
+    }
+
+    setLoading(true);
+    document.getElementById('register-error').style.display = 'none';
+
+    // 1. Verificar si el nombre ya existe
+    const { data: userExists } = await supabase
+      .from('usuarios')
+      .select('id')
+      .ilike('nombre_usuario', name)
+      .maybeSingle();
+
+    if (userExists) {
+      setLoading(false);
+      showAuthError('register-error', 'Este nombre de usuario ya está registrado. Por favor elige otro o inicia sesión.');
+      shakePins('reg-p');
+      return;
+    }
+
+    const pinHashed = hashPin(pin);
+
+    // 2. Insertar nuevo usuario
+    const { data, error } = await supabase
+      .from('usuarios')
+      .insert([{ nombre_usuario: name, pin: pinHashed }])
+      .select('id')
+      .single();
+
+    setLoading(false);
+
+    if (error) {
+      console.error('Error en Registro:', error);
+      showAuthError('register-error', 'Hubo un error al registrar. Intenta de nuevo más tarde.');
+      shakePins('reg-p');
+    } else if (data) {
+      showApp(data.id);
+    }
+  };
+
   // ── Navegación automática entre dígitos PIN ──
   function initAuthUI() {
     ['login-p','reg-p','pf-pin'].forEach(prefix => {
@@ -281,7 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const next = document.getElementById(prefix + arr[i + 1]);
             if (next) next.focus();
             else {
-              // último dígito — intentar login automático si es el form de login
               if (prefix === 'login-p') {
                 const pin = getPinValue('login-p');
                 if (pin.length === 4) doLogin();
@@ -297,7 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (prev) { prev.value = ''; prev.classList.remove('filled'); prev.focus(); }
           }
         });
-        // solo permitir números
         el.addEventListener('keypress', e => {
           if (!/[0-9]/.test(e.key)) e.preventDefault();
         });
@@ -305,10 +347,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Inicializar navegación PIN si estamos mostrando auth
-  if (!existingSession || !users[existingSession?.userId]) {
-    initAuthUI();
+  // ── Inicialización de sesión local ──
+  initAuthUI();
+  
+  const savedSessionId = localStorage.getItem('sc_auth_session');
+  if (savedSessionId) {
+    showApp(savedSessionId);
+  } else {
+    if (authScreen) authScreen.style.display = 'flex';
+    if (appContent) appContent.style.display = 'none';
   }
+
+
 
   // ═══════════════════════════════════════════════════════════════
   //  UTILIDADES
@@ -1901,7 +1951,7 @@ function displayHealthFacilities(facilities, userLat, userLng) {
 
   function openProfile() {
     if (!appState.currentUser) return;
-    const p = getUserProfile(appState.currentUser);
+    const p = getUserProfile();
 
     // Llenar campos con datos guardados
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
@@ -1994,14 +2044,19 @@ function displayHealthFacilities(facilities, userLat, userLng) {
     const newPin = ['pf-pin1','pf-pin2','pf-pin3','pf-pin4']
       .map(id => document.getElementById(id)?.value || '').join('');
     if (newPin.length === 4) {
-      const users = getUsers();
-      if (users[appState.currentUser]) {
-        users[appState.currentUser].pinHash = hashPin(newPin);
-        saveUsers(users);
-      }
+      const password = hashPin(newPin);
+      supabase.from('usuarios').update({ pin: password }).eq('id', appState.currentUser).then(({ data, error }) => {
+        if (error) console.error("Error al actualizar PIN", error);
+        else console.log("PIN actualizado correctamente");
+      });
+      // Limpiar campos de PIN
+      ['pf-pin1','pf-pin2','pf-pin3','pf-pin4'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
     }
 
-    saveUserProfile(appState.currentUser, profile);
+    saveUserProfileLocally(profile);
     updateHeaderUser();
 
     // Cerrar perfil
@@ -2021,15 +2076,17 @@ function displayHealthFacilities(facilities, userLat, userLng) {
   if (btnCancelProfile) btnCancelProfile.addEventListener('click', closeProfile);
   if (btnSaveProfile)   btnSaveProfile.addEventListener('click', saveProfile);
 
-  if (btnLogout) btnLogout.addEventListener('click', () => {
+  if (btnLogout) btnLogout.addEventListener('click', async () => {
     if (confirm('¿Cerrar sesión? Tendrás que ingresar tu PIN la próxima vez.')) {
-      clearSession();
+      localStorage.removeItem('sc_auth_session');
       appState.currentUser = null;
       appState.conversationHistory = [];
       if (appContent) appContent.style.display = 'none';
       if (authScreen) authScreen.style.display = 'flex';
       clearPins();
       showAuthTab('login');
+      // Cerrar modal de perfil si está abierto
+      if (profileContainer) profileContainer.style.display = 'none';
     }
   });
 

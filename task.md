@@ -1,0 +1,8 @@
+- [x] Crear tabla `usuarios` en Supabase con sus políticas de RLS.
+- [ ] Modificar `app.js`:
+  - [ ] Reemplazar llamadas a `supabase.auth` por consultas directas a la tabla `usuarios`.
+  - [ ] Implementar la verificación y guardado de sesión local en `localStorage`.
+  - [ ] Ajustar guardado y actualización de perfiles a la columna `perfil` de `usuarios`.
+  - [ ] Adaptar manejo de PIN y su validación.
+- [ ] Validar que la sintaxis de `app.js` sea correcta (`node -c`).
+- [ ] Completar walkthrough y notificar al usuario.
