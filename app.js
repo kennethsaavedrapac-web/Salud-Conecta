@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═══════════════════════════════════════════════════════════════
   //  CONFIGURACIÓN DE GEMINI API (Google AI)
   // ═══════════════════════════════════════════════════════════════
-  const GEMINI_API_KEY = 'AIzaSyBX8gU_SzFT_PpF6oXeOUMNbHBQ3F-BC0o';
+  const GEMINI_API_KEY = 'AIzaSyAHYKLvcl7LmAva6WrJwgs2hO8efdgHAFg';
   const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
   // Cadena de modelos: si el primero da 429 (cuota), se intenta el siguiente
   const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
