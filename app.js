@@ -2,8 +2,8 @@
 ═══════════════════════════════════════════════════════════════
 SALUD-CONECTA IA — App Principal
 ═══════════════════════════════════════════════════════════════
-📌 VERSIÓN: 7.4.1
-📌 CAMBIOS: Fix teclado virtual · Manejo de pegado de imágenes
+📌 VERSIÓN: 7.4.2
+📌 CAMBIOS: Fix auth local fallback · Manejo de pegado de imágenes
 ══════════════════════════════════════════════════════════════
 */
 
@@ -73,7 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═══════════════════════════════════════════════════════════════
   const SUPABASE_URL = 'https://fxdtisafgmtoccdzdvht.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_OjKM2CciiL39KEH-LmNH6Q_9gKikAm3';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let supabase = null;
+  try {
+    if (window.supabase) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+  } catch (e) {
+    console.warn('Supabase no disponible, usando modo local only');
+  }
 
   // Funciones de utilidad para Auth
   function hashPin(pin) {
@@ -87,6 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentUserProfile = {};
 
   async function loadUserProfile(userId) {
+    if (!supabase) {
+      // Load from local storage
+      const profiles = JSON.parse(localStorage.getItem('sc_profiles') || '{}');
+      currentUserProfile = profiles[userId] || {};
+      return;
+    }
     const { data, error } = await supabase
       .from('usuarios')
       .select('nombre_usuario, perfil')
@@ -102,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function saveUserProfileLocally(profileData) {
     currentUserProfile = { ...currentUserProfile, ...profileData };
-    if (appState.currentUser) {
+    if (supabase && appState.currentUser) {
       await supabase.from('usuarios').update({ perfil: currentUserProfile }).eq('id', appState.currentUser);
     }
   }
@@ -244,22 +257,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const pinHashed = hashPin(pin);
 
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('id, nombre_usuario')
-      .ilike('nombre_usuario', name)
-      .eq('pin', pinHashed)
-      .single();
+    // Try local auth first
+    const users = getUsers();
+    const localUser = Object.entries(users).find(([id, u]) => 
+      u.name?.toLowerCase() === name.toLowerCase() && u.pin === pinHashed
+    );
+
+    if (localUser) {
+      setLoading(false);
+      showApp(localUser[0]);
+      return;
+    }
+
+    // Fallback to Supabase if available
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('id, nombre_usuario')
+          .ilike('nombre_usuario', name)
+          .eq('pin', pinHashed)
+          .single();
+
+        setLoading(false);
+
+        if (error || !data) {
+          showAuthError('login-error', 'Nombre o PIN incorrecto. Intentá de nuevo.');
+          shakePins('login-p');
+        } else {
+          showApp(data.id);
+        }
+        return;
+      } catch (e) {
+        console.warn('Supabase login failed, using local');
+      }
+    }
 
     setLoading(false);
-
-    if (error || !data) {
-      console.error('Error en Login:', error);
-      showAuthError('login-error', 'Nombre o PIN incorrecto. Intentá de nuevo.');
-      shakePins('login-p');
-    } else {
-      showApp(data.id);
-    }
+    showAuthError('login-error', 'Nombre o PIN incorrecto. Intentá de nuevo.');
+    shakePins('login-p');
   };
 
   // ── Registro ──
@@ -279,38 +315,60 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoading(true);
     document.getElementById('register-error').style.display = 'none';
 
-    // 1. Verificar si el nombre ya existe
-    const { data: userExists } = await supabase
-      .from('usuarios')
-      .select('id')
-      .ilike('nombre_usuario', name)
-      .maybeSingle();
+    const pinHashed = hashPin(pin);
 
-    if (userExists) {
+    // 1. Check local users first
+    const users = getUsers();
+    const nameExists = Object.values(users).some(u => u.name?.toLowerCase() === name.toLowerCase());
+    
+    if (nameExists) {
       setLoading(false);
       showAuthError('register-error', 'Este nombre de usuario ya está registrado. Por favor elige otro o inicia sesión.');
       shakePins('reg-p');
       return;
     }
 
-    const pinHashed = hashPin(pin);
+    // 2. Try Supabase if available
+    if (supabase) {
+      try {
+        const { data: userExists } = await supabase
+          .from('usuarios')
+          .select('id')
+          .ilike('nombre_usuario', name)
+          .maybeSingle();
 
-    // 2. Insertar nuevo usuario
-    const { data, error } = await supabase
-      .from('usuarios')
-      .insert([{ nombre_usuario: name, pin: pinHashed }])
-      .select('id')
-      .single();
+        if (userExists) {
+          setLoading(false);
+          showAuthError('register-error', 'Este nombre de usuario ya está registrado. Por favor elige otro o inicia sesión.');
+          shakePins('reg-p');
+          return;
+        }
 
-    setLoading(false);
+        const { data, error } = await supabase
+          .from('usuarios')
+          .insert([{ nombre_usuario: name, pin: pinHashed }])
+          .select('id')
+          .single();
 
-    if (error) {
-      console.error('Error en Registro:', error);
-      showAuthError('register-error', 'Hubo un error al registrar. Intenta de nuevo más tarde.');
-      shakePins('reg-p');
-    } else if (data) {
-      showApp(data.id);
+        setLoading(false);
+
+        if (error) {
+          console.error('Error en Registro:', error);
+        } else if (data) {
+          showApp(data.id);
+          return;
+        }
+      } catch (e) {
+        console.warn('Supabase registration failed, using local');
+      }
     }
+
+    // 3. Fallback to local storage
+    const userId = 'user_' + Date.now();
+    const newUsers = { ...users, [userId]: { name, pin: pinHashed, createdAt: new Date().toISOString() } };
+    saveUsers(newUsers);
+    setLoading(false);
+    showApp(userId);
   };
 
   // ── Navegación automática entre dígitos PIN ──
@@ -2049,10 +2107,18 @@ function displayHealthFacilities(facilities, userLat, userLng) {
       .map(id => document.getElementById(id)?.value || '').join('');
     if (newPin.length === 4) {
       const password = hashPin(newPin);
-      supabase.from('usuarios').update({ pin: password }).eq('id', appState.currentUser).then(({ data, error }) => {
-        if (error) console.error("Error al actualizar PIN", error);
-        else console.log("PIN actualizado correctamente");
-      });
+      if (supabase) {
+        supabase.from('usuarios').update({ pin: password }).eq('id', appState.currentUser).then(({ data, error }) => {
+          if (error) console.error("Error al actualizar PIN", error);
+          else console.log("PIN actualizado correctamente");
+        });
+      }
+      // Also update local storage
+      const users = getUsers();
+      if (users[appState.currentUser]) {
+        users[appState.currentUser].pin = password;
+        saveUsers(users);
+      }
       // Limpiar campos de PIN
       ['pf-pin1','pf-pin2','pf-pin3','pf-pin4'].forEach(id => {
         const el = document.getElementById(id);
