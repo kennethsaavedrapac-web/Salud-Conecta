@@ -10,23 +10,6 @@ SALUD-CONECTA IA — App Principal
 document.addEventListener('DOMContentLoaded', () => {
 
   // ═══════════════════════════════════════════════════════════════
-  //  GLOBAL ERROR HANDLER — Prevenir errores en pantalla
-  // ═══════════════════════════════════════════════════════════════
-  window.addEventListener('error', (e) => {
-    console.warn('Global error caught:', e.message);
-    if (e.message && e.message.includes('clipboard')) {
-      e.preventDefault();
-    }
-  });
-
-  window.addEventListener('unhandledrejection', (e) => {
-    console.warn('Unhandled promise rejection:', e.reason);
-    if (e.reason && String(e.reason).includes('clipboard')) {
-      e.preventDefault();
-    }
-  });
-
-  // ═══════════════════════════════════════════════════════════════
   //  DARK MODE INIT
   // ═══════════════════════════════════════════════════════════════
   if (localStorage.getItem('sc_dark_mode') === 'true') {
