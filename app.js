@@ -123,6 +123,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (authScreen) authScreen.style.display = 'none';
     if (appContent) appContent.style.display = 'block';
+
+    // Resetear vistas: asegurar que solo el chat esté visible inicialmente
+    const pContainer = document.getElementById('profile-container');
+    if (pContainer) pContainer.style.display = 'none';
+    const mContainer = document.getElementById('map-container');
+    if (mContainer) mContainer.style.display = 'none';
+    const rfContainer = document.getElementById('report-form-container');
+    if (rfContainer) rfContainer.style.display = 'none';
+    const rlContainer = document.getElementById('reports-list-container');
+    if (rlContainer) rlContainer.style.display = 'none';
+    
+    const chatMsg = document.getElementById('chat-messages');
+    if (chatMsg && chatMsg.parentElement) {
+      chatMsg.parentElement.style.display = 'flex';
+    }
+
     updateHeaderUser();
     personalizeWelcome();
     checkPrivacyConsent();
