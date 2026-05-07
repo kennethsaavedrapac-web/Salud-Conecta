@@ -10,6 +10,23 @@ SALUD-CONECTA IA — App Principal
 document.addEventListener('DOMContentLoaded', () => {
 
   // ═══════════════════════════════════════════════════════════════
+  //  GLOBAL ERROR HANDLER — Prevenir errores en pantalla
+  // ═══════════════════════════════════════════════════════════════
+  window.addEventListener('error', (e) => {
+    console.warn('Global error caught:', e.message);
+    if (e.message && e.message.includes('clipboard')) {
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('unhandledrejection', (e) => {
+    console.warn('Unhandled promise rejection:', e.reason);
+    if (e.reason && String(e.reason).includes('clipboard')) {
+      e.preventDefault();
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   //  DARK MODE INIT
   // ═══════════════════════════════════════════════════════════════
   if (localStorage.getItem('sc_dark_mode') === 'true') {
@@ -552,15 +569,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═══════════════════════════════════════════════════════════════
   if (userInput) {
     userInput.addEventListener('paste', (e) => {
-      const items = e.clipboardData?.items;
-      if (items) {
-        for (let i = 0; i < items.length; i++) {
-          if (items[i].type.startsWith('image/')) {
-            e.preventDefault();
-            addMessage('Lo siento, no puedo procesar imágenes. Por favor describe tus síntomas con palabras.', 'ai', null, getShortTime());
-            return;
+      try {
+        const items = e.clipboardData?.items;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type && items[i].type.startsWith('image/')) {
+              e.preventDefault();
+              addMessage('Lo siento, no puedo procesar imágenes. Por favor describe tus síntomas con palabras.', 'ai', null, getShortTime());
+              return;
+            }
           }
         }
+      } catch (err) {
+        console.warn('Paste handling error:', err);
       }
     });
   }
