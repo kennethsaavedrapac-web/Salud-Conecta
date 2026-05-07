@@ -367,6 +367,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const userId = 'user_' + Date.now();
     const newUsers = { ...users, [userId]: { name, pin: pinHashed, createdAt: new Date().toISOString() } };
     saveUsers(newUsers);
+
+    // Guardar también en IndexedDB si está disponible
+    if (typeof saludConectaDB !== 'undefined') {
+      try {
+        await saludConectaDB.saveUser(userId, pinHashed);
+        console.log('✅ Usuario guardado en IndexedDB');
+      } catch (e) {
+        console.warn('⚠️ No se pudo guardar en IndexedDB:', e);
+      }
+    }
+
     setLoading(false);
     showApp(userId);
   };
@@ -405,16 +416,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  //  FUNCIONES DE USUARIOS (Faltantes en el código original)
+  // ═══════════════════════════════════════════════════════
+  function getUsers() {
+    return JSON.parse(localStorage.getItem('sc_users') || '{}');
+  }
+
+  function saveUsers(users) {
+    localStorage.setItem('sc_users', JSON.stringify(users));
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  SINCRONIZACIÓN CON INDEXEDDB (Respaldo robusto)
+  // ═══════════════════════════════════════════════════════════════
+  async function initDatabaseSync() {
+    if (typeof saludConectaDB !== 'undefined') {
+      try {
+        await saludConectaDB.syncAllData();
+        console.log('✅ Datos sincronizados desde IndexedDB');
+      } catch (e) {
+        console.warn('⚠️ IndexedDB no disponible, usando localStorage solo');
+      }
+    }
+  }
+
   // ── Inicialización de sesión local ──
   initAuthUI();
-  
-  const savedSessionId = localStorage.getItem('sc_auth_session');
-  if (savedSessionId) {
-    showApp(savedSessionId);
-  } else {
-    if (authScreen) authScreen.style.display = 'flex';
-    if (appContent) appContent.style.display = 'none';
-  }
+
+  // Sincronizar datos al iniciar (recupera datos si la cache fue borrada)
+  initDatabaseSync().then(() => {
+    const savedSessionId = localStorage.getItem('sc_auth_session');
+    if (savedSessionId) {
+      showApp(savedSessionId);
+    } else {
+      if (authScreen) authScreen.style.display = 'flex';
+      if (appContent) appContent.style.display = 'none';
+    }
+  });
 
 
 
