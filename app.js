@@ -573,79 +573,35 @@ document.addEventListener('DOMContentLoaded', () => {
   //  VISUAL VIEWPORT — MANEJO DEL TECLADO VIRTUAL
   // ═══════════════════════════════════════════════════════════════
   const chatContainer = document.querySelector('.chat-container');
-  const chatInputArea = document.querySelector('.chat-input-area');
   
-  function handleKeyboardOpen() {
-    if (!chatContainer || !chatInputArea) return;
+  function handleKeyboardState() {
+    if (!chatContainer) return;
     
-    document.body.classList.add('keyboard-open');
+    const viewport = window.visualViewport;
+    const isKeyboardOpen = window.innerHeight - (viewport ? viewport.height : window.innerHeight) > 100;
     
-    // Scroll to bottom of messages
-    setTimeout(() => {
-      if (chatMessages) {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
-    }, 100);
-  }
-  
-  function handleKeyboardClose() {
-    if (!chatContainer || !chatInputArea) return;
-    chatContainer.classList.remove('keyboard-open');
-    chatContainer.style.height = '';
-    document.body.classList.remove('keyboard-open');
+    if (isKeyboardOpen) {
+      document.body.classList.add('keyboard-open');
+      chatContainer.classList.add('keyboard-open');
+      // Scroll al fondo para ver el último mensaje
+      setTimeout(() => {
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+      }, 100);
+    } else {
+      document.body.classList.remove('keyboard-open');
+      chatContainer.classList.remove('keyboard-open');
+    }
   }
 
-  if (chatContainer && window.visualViewport) {
-    let lastState = null;
-    
-    window.visualViewport.addEventListener('resize', () => {
-      const viewport = window.visualViewport;
-      const keyboardHeight = window.innerHeight - viewport.height;
-      const isKeyboardOpen = keyboardHeight > 100;
-      
-      if (isKeyboardOpen && !lastState) {
-        // Keyboard opened
-        chatContainer.classList.add('keyboard-open');
-        chatContainer.style.height = `calc(${viewport.height}px - 168px)`;
-        handleKeyboardOpen();
-      } else if (!isKeyboardOpen && lastState === true) {
-        // Keyboard closed
-        handleKeyboardClose();
-      }
-      
-      lastState = isKeyboardOpen;
-    });
-    
-    // Also listen for focus events as fallback
-    if (userInput) {
-      userInput.addEventListener('focus', () => {
-        setTimeout(handleKeyboardOpen, 300);
-      });
-      userInput.addEventListener('blur', () => {
-        setTimeout(() => {
-          if (!userInput.matches(':focus')) {
-            handleKeyboardClose();
-          }
-        }, 100);
-      });
-    }
-  } else if (chatContainer && userInput) {
-    userInput.addEventListener('focus', () => {
-      setTimeout(() => {
-        const keyboardHeight = window.innerHeight - document.documentElement.clientHeight;
-        if (keyboardHeight > 100) {
-          chatContainer.classList.add('keyboard-open');
-          handleKeyboardOpen();
-        }
-      }, 300);
-    });
-    userInput.addEventListener('blur', () => {
-      setTimeout(() => {
-        if (!userInput.matches(':focus')) {
-          handleKeyboardClose();
-        }
-      }, 100);
-    });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleKeyboardState);
+    window.visualViewport.addEventListener('scroll', handleKeyboardState);
+  }
+
+  // Fallback para enfoques
+  if (userInput) {
+    userInput.addEventListener('focus', () => setTimeout(handleKeyboardState, 300));
+    userInput.addEventListener('blur', () => setTimeout(handleKeyboardState, 100));
   }
 
   // ═══════════════════════════════════════════════════════════════
