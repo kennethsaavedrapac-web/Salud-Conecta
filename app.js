@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const GEMINI_API_KEY = 'AIzaSyBX8gU_SzFT_PpF6oXeOUMNbHBQ3F-BC0o';
   const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
   // Cadena de modelos: si el primero da 429 (cuota), se intenta el siguiente
-  const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
   const MAX_HISTORY = 20;
 
   // ═══════════════════════════════════════════════════════════════
