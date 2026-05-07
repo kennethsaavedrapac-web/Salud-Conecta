@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SALUD-CONECTA IA — Estilos v7.4.2 (Keyboard Fix)
+   SALUD-CONECTA IA — Estilos v7.4.3 (Disclaimer fixed)
    Paleta: #2E7DBB · #204E84 · #30A050 · #A4D84E
    ═══════════════════════════════════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
@@ -524,7 +524,8 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
   display: flex; flex-direction: column;
   height: calc(100vh - 168px);
   max-width: 800px; margin: 0 auto;
-  padding: 0.85rem; width: 100%;
+  padding: 0.85rem 0.85rem 2.5rem 0.85rem;
+  width: 100%;
   transition: height 0.2s ease;
 }
 
@@ -705,6 +706,15 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
   text-align: center;
   font-size: 0.78rem; font-weight: 500;
   border-top: 2px solid rgba(243,156,18,0.22);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 998;
+}
+
+body.keyboard-open .disclaimer-banner {
+  display: none;
 }
 .disclaimer-banner p { margin: 0; }
 

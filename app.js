@@ -2,8 +2,8 @@
 ═══════════════════════════════════════════════════════════════
 SALUD-CONECTA IA — App Principal
 ═══════════════════════════════════════════════════════════════
-📌 VERSIÓN: 7.4.2
-📌 CAMBIOS: Fix input pegado al teclado · Auth local fallback
+📌 VERSIÓN: 7.4.3
+📌 CAMBIOS: Disclaimer pegado al borde inferior
 ══════════════════════════════════════════════════════════════
 */
 
@@ -578,6 +578,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleKeyboardOpen() {
     if (!chatContainer || !chatInputArea) return;
     
+    document.body.classList.add('keyboard-open');
+    
     // Scroll to bottom of messages
     setTimeout(() => {
       if (chatMessages) {
@@ -590,6 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!chatContainer || !chatInputArea) return;
     chatContainer.classList.remove('keyboard-open');
     chatContainer.style.height = '';
+    document.body.classList.remove('keyboard-open');
   }
 
   if (chatContainer && window.visualViewport) {
