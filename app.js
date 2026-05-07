@@ -47,8 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
   //  CONFIGURACIÓN DE GEMINI API (Google AI)
   // ═══════════════════════════════════════════════════════════════
   const GEMINI_API_KEY = 'AIzaSyDMyJt6pTMMOYC5kB40uOX147C2Z7UlUU0';
-  const GEMINI_MODEL   = 'gemini-2.5-flash';
-  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+  // Cadena de modelos: si el primero da 429 (cuota), se intenta el siguiente
+  const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   const MAX_HISTORY = 20;
 
   // ═══════════════════════════════════════════════════════════════
@@ -709,40 +710,75 @@ INSTRUCCIONES:
         parts: [{ text: m.content }]
       }));
 
-      const response = await fetch(GEMINI_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT + geoContext }]
-          },
-          contents: geminiContents,
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 2000
-          }
-        })
+      const requestBody = JSON.stringify({
+        system_instruction: {
+          parts: [{ text: SYSTEM_PROMPT + geoContext }]
+        },
+        contents: geminiContents,
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 2000
+        }
       });
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        console.error('Gemini API error:', response.status, errData);
-        throw new Error(errData.error?.message || `HTTP ${response.status}`);
+      // Intentar con cada modelo en la cadena (fallback ante 429/cuota)
+      let lastError = null;
+      for (const model of GEMINI_MODELS) {
+        const apiUrl = `${GEMINI_BASE_URL}/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        try {
+          console.log(`🤖 Intentando con modelo: ${model}...`);
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: requestBody
+          });
+
+          if (response.status === 429) {
+            console.warn(`⚠️ Modelo ${model} — cuota excedida (429). Probando siguiente modelo...`);
+            lastError = new Error(`429 cuota excedida para ${model}`);
+            // Esperar brevemente antes de intentar el siguiente modelo
+            await new Promise(r => setTimeout(r, 1500));
+            continue;
+          }
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            console.error(`Gemini API error (${model}):`, response.status, errData);
+            lastError = new Error(errData.error?.message || `HTTP ${response.status}`);
+            continue;
+          }
+
+          const data = await response.json();
+          let assistantMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+          if (!assistantMessage) {
+            console.warn(`⚠️ Modelo ${model} — respuesta vacía. Probando siguiente...`);
+            lastError = new Error('Respuesta vacía');
+            continue;
+          }
+
+          // Post-procesamiento anti-alucinaciones
+          assistantMessage = sanitizeAIResponse(assistantMessage);
+
+          console.log(`✅ Respuesta exitosa de: ${model}`);
+
+          // Guardar respuesta en historial
+          appState.conversationHistory.push({ role: 'assistant', content: assistantMessage });
+
+          return assistantMessage;
+
+        } catch (fetchError) {
+          console.error(`Error con modelo ${model}:`, fetchError);
+          lastError = fetchError;
+          continue;
+        }
       }
 
-      const data = await response.json();
-      let assistantMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-      // Post-procesamiento anti-alucinaciones
-      assistantMessage = sanitizeAIResponse(assistantMessage);
-
-      // Guardar respuesta en historial
-      appState.conversationHistory.push({ role: 'assistant', content: assistantMessage });
-
-      return assistantMessage;
+      // Si ningún modelo funcionó
+      throw lastError || new Error('Todos los modelos fallaron');
 
     } catch (error) {
-      console.error('Gemini API error:', error);
+      console.error('Gemini API error (todos los modelos):', error);
       // Revertir mensaje del usuario del historial
       appState.conversationHistory.pop();
       return null;
