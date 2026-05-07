@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SALUD-CONECTA IA — Estilos v7.4.0 (Maintenance Update)
+   SALUD-CONECTA IA — Estilos v7.4.1 (Keyboard Fix)
    Paleta: #2E7DBB · #204E84 · #30A050 · #A4D84E
    ═══════════════════════════════════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
@@ -525,6 +525,11 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
   height: calc(100vh - 168px);
   max-width: 800px; margin: 0 auto;
   padding: 0.85rem; width: 100%;
+  transition: height 0.2s ease;
+}
+
+.chat-container.keyboard-open {
+  flex-shrink: 0;
 }
 .chat-messages {
   flex: 1; overflow-y: auto;

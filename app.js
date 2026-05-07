@@ -2,9 +2,9 @@
 ═══════════════════════════════════════════════════════════════
 SALUD-CONECTA IA — App Principal
 ═══════════════════════════════════════════════════════════════
-📌 VERSIÓN: 7.4.0
-📌 CAMBIOS: Maintenance Update · Database Clean up
-═══════════════════════════════════════════════════════════════
+📌 VERSIÓN: 7.4.1
+📌 CAMBIOS: Fix teclado virtual · Manejo de pegado de imágenes
+══════════════════════════════════════════════════════════════
 */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -460,6 +460,60 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnExportReportsJSON   = document.getElementById('btn-export-reports-json');
   const btnExportReportsCSV    = document.getElementById('btn-export-reports-csv');
   const btnClearReports        = document.getElementById('btn-clear-reports');
+
+  // ═══════════════════════════════════════════════════════════════
+  //  VISUAL VIEWPORT — MANEJO DEL TECLADO VIRTUAL
+  // ═══════════════════════════════════════════════════════════════
+  const chatContainer = document.querySelector('.chat-container');
+  if (chatContainer) {
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        const viewport = window.visualViewport;
+        const keyboardHeight = window.innerHeight - viewport.height;
+        if (keyboardHeight > 100) {
+          chatContainer.classList.add('keyboard-open');
+          chatContainer.style.height = `calc(${viewport.height}px - 168px)`;
+        } else {
+          chatContainer.classList.remove('keyboard-open');
+          chatContainer.style.height = '';
+        }
+      });
+    } else {
+      if (userInput) {
+        userInput.addEventListener('focus', () => {
+          setTimeout(() => {
+            const keyboardHeight = window.innerHeight - document.documentElement.clientHeight;
+            if (keyboardHeight > 100) {
+              chatContainer.classList.add('keyboard-open');
+              chatContainer.style.height = `calc(100vh - 168px - ${keyboardHeight}px)`;
+            }
+          }, 300);
+        });
+        userInput.addEventListener('blur', () => {
+          chatContainer.classList.remove('keyboard-open');
+          chatContainer.style.height = '';
+        });
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  MANEJO DE PEGADO (PASTE) — EVITAR ERRORES DE IMAGEN
+  // ═══════════════════════════════════════════════════════════════
+  if (userInput) {
+    userInput.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith('image/')) {
+            e.preventDefault();
+            addMessage('Lo siento, no puedo procesar imágenes. Por favor describe tus síntomas con palabras.', 'ai', null, getShortTime());
+            return;
+          }
+        }
+      }
+    });
+  }
 
   // ═══════════════════════════════════════════════════════════════
   //  CONSTANTES — KEYWORDS Y MAPEOS

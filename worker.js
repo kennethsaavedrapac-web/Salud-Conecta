@@ -52,7 +52,8 @@ INSTRUCCIONES:
    No menciones ningún otro hospital ni número de emergencia.
 4. Para MEDIA: Di EXACTAMENTE "Te recomendamos visitar el Hospital Amistad Japón Nicaragua, o puedes visitar tu centro de salud más cercano, míralo en el mapa." No menciones ningún otro hospital.
 5. Para BAJA: Proporciona 4-6 consejos de autocuidado seguros, claros y útiles.
-6. Tu prioridad es explicar y ampliar la información del CONTEXTO LOCAL Y GEOGRÁFICO. Si el usuario está cerca de un centro, menciónalo por su nombre y dile cuánto tiempo tardará en llegar basándote en el campo 'durationMin'.
+6. Tu prioridad es explicar y ampliar la información del CONTEXTO LOCAL Y GEOGRÁFICO proporcionado en los corchetes [ ]. 
+   NUNCA inventes nombres de clínicas vinculándolas a barrios (ej: "Clínica El Calvario" o "Clínica Familiar"). Si no aparece en el contexto, NO existe.
 7. Reconoce siempre que los datos provienen de la "Base de Datos de Salud de Granada" integrada en SaludConecta AI.
 8. Si el usuario pregunta por opciones (ej: "qué farmacias hay"), menciona TODAS las que aparezcan en el CONTEXTO LOCAL, no solo una.
 9. NUNCA proporciones diagnósticos médicos definitivos.
@@ -145,7 +146,8 @@ export default {
       // Post-procesamiento: corregir alucinaciones del LLM (última línea de defensa)
       text = text.replace(/Hospital\s+Virgen\s+de\s+la\s+Asistencia/gi, "Hospital Amistad Japón Nicaragua");
       text = text.replace(/Virgen\s+de\s+la\s+Asistencia/gi, "Hospital Amistad Japón Nicaragua");
-      text = text.replace(/Cl[ií]nica\s+Familiar/gi, "centro de salud más cercano");
+      text = text.replace(/Cl[ií]nica\s+Familiar(\s*\(MINSA\))?(\s+en\s+el\s+Barrio\s+El\s+Calvario)?/gi, "centro de salud del MINSA más cercano");
+      text = text.replace(/Cl[ií]nica\s+El\s+Calvario/gi, "centro de salud más cercano");
       text = text.replace(/Carlos\s+Roberto\s+Huembes/gi, "Hospital Amistad Japón Nicaragua");
       text = text.replace(/Huembes/gi, "Hospital Amistad Japón Nicaragua");
       text = text.replace(/\b133\b/g, "128");
