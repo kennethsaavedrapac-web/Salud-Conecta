@@ -516,13 +516,24 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
   flex-shrink: 0;
 }
 .btn-profile:hover .user-initial { background: white; color: var(--primary); }
+/* ───────────────────────────────
+   APP MAIN CONTAINER
+   ─────────────────────────────── */
+#app-content {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
 
 /* ───────────────────────────────
    CHAT
    ─────────────────────────────── */
 .chat-container {
   display: flex; flex-direction: column;
-  height: calc(100vh - 168px);
+  flex: 1;
+  min-height: 0;
   max-width: 800px; margin: 0 auto;
   padding: 0.85rem; width: 100%;
 }
@@ -1013,7 +1024,7 @@ main:has(#offline-banner[style*="display: block"]) .app-header {
   .app-header { padding: 0.65rem 0.9rem; }
   .header-logo img { height: 28px; }
   .header-app-name { font-size: 0.9rem; }
-  .chat-container { height: calc(100vh - 185px); padding: 0.5rem; }
+  .chat-container { padding: 0.5rem; }
   .message { max-width: 93%; }
   .message-avatar { width: 28px; height: 28px; font-size: 0.62rem; }
   .profile-grid { grid-template-columns: 1fr; }

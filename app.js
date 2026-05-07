@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadUserProfile(userId);
     
     if (authScreen) authScreen.style.display = 'none';
-    if (appContent) appContent.style.display = 'block';
+    if (appContent) appContent.style.display = 'flex';
 
     // Resetear vistas: asegurar que solo el chat esté visible inicialmente
     const pContainer = document.getElementById('profile-container');
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const content = document.getElementById('app-content');
     if (localStorage.getItem('sc_consent') === 'true') {
       if (modal) modal.style.display = 'none';
-      if (content) content.style.display = 'block';
+      if (content) content.style.display = 'flex';
     } else {
       if (modal) modal.style.display = 'flex';
       if (content) content.style.display = 'none';
